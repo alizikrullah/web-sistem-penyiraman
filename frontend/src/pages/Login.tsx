@@ -60,7 +60,7 @@ export default function Login() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               style={inputStyle}
-              placeholder="admin"
+              placeholder="Username"
             />
           </div>
 

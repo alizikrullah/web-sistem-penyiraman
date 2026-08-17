@@ -26,65 +26,86 @@ export default function Navbar() {
 
   if (isMobile) {
     return (
-      <nav style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: 'var(--bg-card)',
-        borderTop: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-        height: '64px',
-        zIndex: 100,
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}>
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.to;
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '3px',
-                textDecoration: 'none',
-                padding: '8px 20px',
-                borderRadius: '12px',
-                color: isActive ? 'var(--green)' : 'var(--text-muted)',
-                background: isActive ? 'rgba(14,165,233,0.1)' : 'transparent',
-                minWidth: '72px',
-              }}
-            >
-              <span style={{ fontSize: '20px' }}>{item.icon}</span>
-              <span style={{ fontSize: '11px', fontWeight: isActive ? 700 : 400 }}>
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
-        <button
-          onClick={handleLogout}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '3px',
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-muted)',
-            cursor: 'pointer',
-            padding: '8px 20px',
-            minWidth: '72px',
-          }}
-        >
-          <span style={{ fontSize: '20px' }}>🚪</span>
-          <span style={{ fontSize: '11px' }}>Logout</span>
-        </button>
-      </nav>
+      <>
+        {/* Top branding header */}
+        <header style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '48px',
+          background: 'var(--bg-card)',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          paddingLeft: '16px',
+          zIndex: 100,
+        }}>
+          <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: '16px' }}>
+            💧 Penyiraman
+          </span>
+        </header>
+
+        {/* Bottom navigation */}
+        <nav style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'var(--bg-card)',
+          borderTop: '1px solid var(--border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-around',
+          height: '64px',
+          zIndex: 100,
+        }}>
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.to;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '3px',
+                  textDecoration: 'none',
+                  padding: '8px 20px',
+                  borderRadius: '12px',
+                  color: isActive ? 'var(--green)' : 'var(--text-muted)',
+                  background: isActive ? 'rgba(14,165,233,0.1)' : 'transparent',
+                  minWidth: '72px',
+                }}
+              >
+                <span style={{ fontSize: '20px' }}>{item.icon}</span>
+                <span style={{ fontSize: '11px', fontWeight: isActive ? 700 : 400 }}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+          <button
+            onClick={handleLogout}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '3px',
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '8px 20px',
+              minWidth: '72px',
+            }}
+          >
+            <span style={{ fontSize: '20px' }}>🚪</span>
+            <span style={{ fontSize: '11px' }}>Logout</span>
+          </button>
+        </nav>
+      </>
     );
   }
 
@@ -102,7 +123,6 @@ export default function Navbar() {
       <span style={{ color: 'var(--green)', fontWeight: 700, fontSize: '16px' }}>
         💧 Penyiraman
       </span>
-
       <div style={{ display: 'flex', gap: '4px' }}>
         {navItems.map((item) => (
           <Link
@@ -122,7 +142,6 @@ export default function Navbar() {
           </Link>
         ))}
       </div>
-
       <button
         onClick={handleLogout}
         style={{

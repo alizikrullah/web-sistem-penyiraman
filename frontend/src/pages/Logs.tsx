@@ -105,7 +105,7 @@ export default function Logs() {
             onClick={() => setPage((p) => p - 1)}
             style={btnGhost}
           >
-            ← Sebelumnya
+            ←
           </button>
           <span style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center' }}>
             Hal {page} / {pagination.totalPages}
@@ -115,7 +115,7 @@ export default function Logs() {
             onClick={() => setPage((p) => p + 1)}
             style={btnGhost}
           >
-            Berikutnya →
+            →
           </button>
         </div>
       )}
