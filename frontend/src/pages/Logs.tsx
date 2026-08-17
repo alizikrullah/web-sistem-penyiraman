@@ -68,9 +68,10 @@ export default function Logs() {
                   style={{ borderBottom: i < logs.length - 1 ? '1px solid var(--border)' : 'none' }}
                 >
                   <td style={tdStyle}>
-                    {new Date(log.timestamp).toLocaleString('id-ID', {
+                    {new Date(log.timestamp.replace(' ', 'T') + 'Z').toLocaleString('id-ID', {
                       day: '2-digit', month: 'short', year: 'numeric',
                       hour: '2-digit', minute: '2-digit', second: '2-digit',
+                      timeZone: 'Asia/Jakarta',
                     })}
                   </td>
                   <td style={tdStyle}>

@@ -6,19 +6,22 @@ interface Status {
   mode: 'auto' | 'manual';
   deviceOnline: boolean;
   lastHeartbeat: string | null;
-  manualExpiresAt: string | null;
 }
+
+const CONNECTION_TIMEOUT = 5 * 60 * 1000;
 
 export default function Dashboard() {
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lastSuccessfulFetch, setLastSuccessfulFetch] = useState(Date.now());
 
   const fetchStatus = useCallback(async () => {
     try {
       const res = await getStatus();
       setStatus(res.data);
+      setLastSuccessfulFetch(Date.now());
     } catch {
-      // silent fail, retry on next interval
+      // silent fail, lastSuccessfulFetch tidak di-update
     }
   }, []);
 
@@ -32,7 +35,7 @@ export default function Dashboard() {
     if (!status) return;
     setLoading(true);
     try {
-      if (status.isOn) {
+      if (effectiveIsOn) {
         await pumpOff();
       } else {
         await pumpOn();
@@ -61,9 +64,26 @@ export default function Dashboard() {
     );
   }
 
+  const connectionLost = Date.now() - lastSuccessfulFetch > CONNECTION_TIMEOUT;
+  const effectiveIsOn = connectionLost ? false : status.isOn;
+
   return (
     <div style={pageStyle}>
       <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '24px' }}>Dashboard</h2>
+
+      {connectionLost && (
+        <div style={{
+          background: 'rgba(239,68,68,0.1)',
+          border: '1px solid var(--red)',
+          borderRadius: '8px',
+          padding: '10px 16px',
+          marginBottom: '16px',
+          fontSize: '13px',
+          color: 'var(--red)',
+        }}>
+          Koneksi ke server terputus lebih dari 5 menit. Status pompa direset ke MATI.
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
 
@@ -76,22 +96,17 @@ export default function Dashboard() {
                 width: '14px',
                 height: '14px',
                 borderRadius: '50%',
-                background: status.isOn ? 'var(--green)' : 'var(--text-muted)',
-                boxShadow: status.isOn ? '0 0 8px rgba(14,165,233,0.6)' : 'none',
+                background: effectiveIsOn ? 'var(--green)' : 'var(--text-muted)',
+                boxShadow: effectiveIsOn ? '0 0 8px rgba(14,165,233,0.6)' : 'none',
               }}
             />
-            <span style={{ fontSize: '28px', fontWeight: 700, color: status.isOn ? 'var(--green)' : 'var(--text)' }}>
-              {status.isOn ? 'NYALA' : 'MATI'}
+            <span style={{ fontSize: '28px', fontWeight: 700, color: effectiveIsOn ? 'var(--green)' : 'var(--text)' }}>
+              {effectiveIsOn ? 'NYALA' : 'MATI'}
             </span>
           </div>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
             Mode: <span style={{ color: 'var(--text)', fontWeight: 600 }}>{status.mode.toUpperCase()}</span>
           </p>
-          {status.mode === 'manual' && status.manualExpiresAt && (
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-              Auto-release: {new Date(status.manualExpiresAt).toLocaleTimeString('id-ID')}
-            </p>
-          )}
         </div>
 
         {/* Device Status Card */}
@@ -113,7 +128,9 @@ export default function Dashboard() {
           <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
             Heartbeat terakhir:{' '}
             {status.lastHeartbeat
-              ? new Date(status.lastHeartbeat).toLocaleTimeString('id-ID')
+              ? new Date(status.lastHeartbeat.replace(' ', 'T') + 'Z').toLocaleTimeString('id-ID', {
+                  timeZone: 'Asia/Jakarta'
+                })
               : '-'}
           </p>
         </div>
@@ -123,7 +140,7 @@ export default function Dashboard() {
           <p style={cardLabel}>Kontrol Manual</p>
           <button
             onClick={handleToggle}
-            disabled={loading}
+            disabled={loading || connectionLost}
             style={{
               width: '100%',
               marginTop: '16px',
@@ -132,16 +149,16 @@ export default function Dashboard() {
               border: 'none',
               fontWeight: 700,
               fontSize: '15px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              background: status.isOn ? 'var(--red)' : 'var(--green)',
+              cursor: loading || connectionLost ? 'not-allowed' : 'pointer',
+              background: effectiveIsOn ? 'var(--red)' : 'var(--green)',
               color: '#fff',
-              opacity: loading ? 0.6 : 1,
+              opacity: loading || connectionLost ? 0.6 : 1,
             }}
           >
-            {loading ? 'Memproses...' : status.isOn ? '⏹ Matikan Pompa' : '▶ Nyalakan Pompa'}
+            {loading ? 'Memproses...' : effectiveIsOn ? '⏹ Matikan Pompa' : '▶ Nyalakan Pompa'}
           </button>
 
-          {status.mode === 'manual' && (
+          {status.mode === 'manual' && !connectionLost && (
             <button
               onClick={handleReleaseAuto}
               disabled={loading}
