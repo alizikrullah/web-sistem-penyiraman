@@ -8,9 +8,13 @@ const router = Router();
 router.get('/', requireAuth, (_req: Request, res: Response): void => {
   const rows = db.prepare('SELECT * FROM schedules ORDER BY start_time ASC').all();
   const schedules = rows.map((s: any) => ({
-    ...s,
+    id: s.id,
+    label: s.label,
     days: JSON.parse(s.days),
+    startTime: s.start_time,
+    durationMinutes: s.duration_minutes,
     isActive: Boolean(s.is_active),
+    createdAt: s.created_at,
   }));
   res.json(schedules);
 });
@@ -35,7 +39,15 @@ router.post('/', requireAuth, (req: Request, res: Response): void => {
   `).run(label, JSON.stringify(days), startTime, durationMinutes);
 
   const created = db.prepare('SELECT * FROM schedules WHERE id = ?').get(result.lastInsertRowid) as any;
-  res.status(201).json({ ...created, days: JSON.parse(created.days), isActive: Boolean(created.is_active) });
+  res.status(201).json({
+    id: created.id,
+    label: created.label,
+    days: JSON.parse(created.days),
+    startTime: created.start_time,
+    durationMinutes: created.duration_minutes,
+    isActive: Boolean(created.is_active),
+    createdAt: created.created_at,
+  });
 });
 
 // PUT /api/schedules/:id
@@ -56,7 +68,15 @@ router.put('/:id', requireAuth, (req: Request, res: Response): void => {
   `).run(label, JSON.stringify(days), startTime, durationMinutes, isActive ? 1 : 0, id);
 
   const updated = db.prepare('SELECT * FROM schedules WHERE id = ?').get(id) as any;
-  res.json({ ...updated, days: JSON.parse(updated.days), isActive: Boolean(updated.is_active) });
+  res.json({
+    id: updated.id,
+    label: updated.label,
+    days: JSON.parse(updated.days),
+    startTime: updated.start_time,
+    durationMinutes: updated.duration_minutes,
+    isActive: Boolean(updated.is_active),
+    createdAt: updated.created_at,
+  });
 });
 
 // DELETE /api/schedules/:id
