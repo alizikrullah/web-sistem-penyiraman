@@ -4,13 +4,15 @@ WORKDIR /app
 
 ENV PYTHON=/usr/bin/python3
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y --no-install-recommends \
     python3 \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    build-essential
 
 COPY package*.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 COPY . .
 RUN npm run build
