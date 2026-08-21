@@ -20,12 +20,11 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Routes
 app.use('/api/auth', authRoutes);
-app.use('/api', pumpRoutes);          // /api/status, /api/pump/on, /api/pump/off, /api/mode/auto
+app.use('/api', pumpRoutes);
 app.use('/api/schedules', schedulesRoutes);
 app.use('/api/logs', logsRoutes);
-app.use('/api/device', deviceRoutes); // /api/device/poll, /api/device/heartbeat
+app.use('/api/device', deviceRoutes);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
