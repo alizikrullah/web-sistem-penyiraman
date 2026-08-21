@@ -34,6 +34,9 @@ export const pumpOff = () => api.post('/pump/off');
 
 export const setModeAuto = () => api.post('/mode/auto');
 
+// Sensor
+export const getSensorData = () => api.get('/sensor');
+
 // Jadwal
 export const getSchedules = () => api.get('/schedules');
 

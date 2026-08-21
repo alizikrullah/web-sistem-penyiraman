@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getStatus, pumpOn, pumpOff, setModeAuto } from '../lib/api';
+import { getStatus, pumpOn, pumpOff, setModeAuto, getSensorData } from '../lib/api';
 
 interface Status {
   isOn: boolean;
@@ -9,10 +9,17 @@ interface Status {
   lastHeartbeat: string | null;
 }
 
+interface SensorData {
+  temperature: number | null;
+  humidity: number | null;
+  timestamp: string | null;
+}
+
 const CONNECTION_TIMEOUT = 5 * 60 * 1000;
 
 export default function Dashboard() {
   const [status, setStatus] = useState<Status | null>(null);
+  const [sensorData, setSensorData] = useState<SensorData | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastSuccessfulFetch, setLastSuccessfulFetch] = useState(Date.now());
   const [inputMinutes, setInputMinutes] = useState(0);
@@ -25,7 +32,16 @@ export default function Dashboard() {
       setStatus(res.data);
       setLastSuccessfulFetch(Date.now());
     } catch {
-      // silent fail, lastSuccessfulFetch tidak di-update
+      // silent fail
+    }
+  }, []);
+
+  const fetchSensorData = useCallback(async () => {
+    try {
+      const res = await getSensorData();
+      setSensorData(res.data);
+    } catch {
+      // silent fail
     }
   }, []);
 
@@ -35,7 +51,13 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [fetchStatus]);
 
-  // Countdown — update tiap detik selama ada pumpOffAt dan pompa nyala
+  useEffect(() => {
+    fetchSensorData();
+    const interval = setInterval(fetchSensorData, 60000); // setiap 1 menit
+    return () => clearInterval(interval);
+  }, [fetchSensorData]);
+
+  // Countdown timer
   useEffect(() => {
     if (!status?.pumpOffAt || !status?.isOn) {
       setCountdown(null);
@@ -96,6 +118,9 @@ export default function Dashboard() {
   const connectionLost = Date.now() - lastSuccessfulFetch > CONNECTION_TIMEOUT;
   const effectiveIsOn = connectionLost ? false : status.isOn;
 
+  const formatSensorTime = (timestamp: string) =>
+    new Date(timestamp.replace(' ', 'T') + 'Z').toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' });
+
   return (
     <div style={pageStyle}>
       <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '24px' }}>Dashboard</h2>
@@ -116,7 +141,7 @@ export default function Dashboard() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
 
-        {/* Status Card */}
+        {/* Status Pompa */}
         <div style={card}>
           <p style={cardLabel}>Status Pompa</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}>
@@ -134,7 +159,6 @@ export default function Dashboard() {
           <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
             Mode: <span style={{ color: 'var(--text)', fontWeight: 600 }}>{status.mode.toUpperCase()}</span>
           </p>
-          {/* Countdown — hanya tampil kalau ada timer dan tidak connectionLost */}
           {countdown && !connectionLost && (
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>
               Mati otomatis:{' '}
@@ -145,7 +169,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Device Status Card */}
+        {/* Status ESP32 */}
         <div style={card}>
           <p style={cardLabel}>Status ESP32</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '16px 0' }}>
@@ -169,11 +193,42 @@ export default function Dashboard() {
           </p>
         </div>
 
+        {/* Suhu */}
+        <div style={card}>
+          <p style={cardLabel}>Suhu</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', margin: '16px 0' }}>
+            <span style={{ fontSize: '36px', fontWeight: 700, color: 'var(--text)' }}>
+              {sensorData?.temperature != null ? sensorData.temperature.toFixed(1) : '-'}
+            </span>
+            {sensorData?.temperature != null && (
+              <span style={{ fontSize: '18px', color: 'var(--text-muted)' }}>°C</span>
+            )}
+          </div>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            {sensorData?.timestamp ? `Update: ${formatSensorTime(sensorData.timestamp)}` : 'Belum ada data'}
+          </p>
+        </div>
+
+        {/* Kelembapan */}
+        <div style={card}>
+          <p style={cardLabel}>Kelembapan</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', margin: '16px 0' }}>
+            <span style={{ fontSize: '36px', fontWeight: 700, color: 'var(--text)' }}>
+              {sensorData?.humidity != null ? sensorData.humidity.toFixed(1) : '-'}
+            </span>
+            {sensorData?.humidity != null && (
+              <span style={{ fontSize: '18px', color: 'var(--text-muted)' }}>%</span>
+            )}
+          </div>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            {sensorData?.timestamp ? `Update: ${formatSensorTime(sensorData.timestamp)}` : 'Belum ada data'}
+          </p>
+        </div>
+
         {/* Kontrol Manual */}
         <div style={card}>
           <p style={cardLabel}>Kontrol Manual</p>
 
-          {/* Input durasi — hanya tampil saat pompa mati dan koneksi oke */}
           {!effectiveIsOn && !connectionLost && (
             <div style={{ marginTop: '16px' }}>
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
