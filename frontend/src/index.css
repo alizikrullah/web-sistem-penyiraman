@@ -34,3 +34,9 @@ body {
     padding-bottom: 80px;
   }
 }
+
+textarea::placeholder,
+input::placeholder {
+  font-family: inherit;
+  font-style: normal;
+}
