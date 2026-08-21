@@ -27,7 +27,8 @@ export const getMe = () => api.get('/auth/me');
 // Status & kontrol pompa
 export const getStatus = () => api.get('/status');
 
-export const pumpOn = () => api.post('/pump/on');
+export const pumpOn = (durationSeconds?: number) =>
+  api.post('/pump/on', durationSeconds ? { durationSeconds } : {});
 
 export const pumpOff = () => api.post('/pump/off');
 

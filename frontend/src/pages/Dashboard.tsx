@@ -4,6 +4,7 @@ import { getStatus, pumpOn, pumpOff, setModeAuto } from '../lib/api';
 interface Status {
   isOn: boolean;
   mode: 'auto' | 'manual';
+  pumpOffAt: string | null;
   deviceOnline: boolean;
   lastHeartbeat: string | null;
 }
@@ -14,6 +15,9 @@ export default function Dashboard() {
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastSuccessfulFetch, setLastSuccessfulFetch] = useState(Date.now());
+  const [inputMinutes, setInputMinutes] = useState(0);
+  const [inputSeconds, setInputSeconds] = useState(0);
+  const [countdown, setCountdown] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -31,6 +35,30 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [fetchStatus]);
 
+  // Countdown — update tiap detik selama ada pumpOffAt dan pompa nyala
+  useEffect(() => {
+    if (!status?.pumpOffAt || !status?.isOn) {
+      setCountdown(null);
+      return;
+    }
+
+    const update = () => {
+      const remaining = new Date(status.pumpOffAt!).getTime() - Date.now();
+      if (remaining <= 0) {
+        setCountdown('00:00');
+        return;
+      }
+      const totalSeconds = Math.ceil(remaining / 1000);
+      const m = Math.floor(totalSeconds / 60);
+      const s = totalSeconds % 60;
+      setCountdown(`${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [status?.pumpOffAt, status?.isOn]);
+
   const handleToggle = async () => {
     if (!status) return;
     setLoading(true);
@@ -38,7 +66,8 @@ export default function Dashboard() {
       if (effectiveIsOn) {
         await pumpOff();
       } else {
-        await pumpOn();
+        const totalSeconds = inputMinutes * 60 + inputSeconds;
+        await pumpOn(totalSeconds > 0 ? totalSeconds : undefined);
       }
       await fetchStatus();
     } finally {
@@ -91,15 +120,13 @@ export default function Dashboard() {
         <div style={card}>
           <p style={cardLabel}>Status Pompa</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}>
-            <div
-              style={{
-                width: '14px',
-                height: '14px',
-                borderRadius: '50%',
-                background: effectiveIsOn ? 'var(--green)' : 'var(--text-muted)',
-                boxShadow: effectiveIsOn ? '0 0 8px rgba(14,165,233,0.6)' : 'none',
-              }}
-            />
+            <div style={{
+              width: '14px',
+              height: '14px',
+              borderRadius: '50%',
+              background: effectiveIsOn ? 'var(--green)' : 'var(--text-muted)',
+              boxShadow: effectiveIsOn ? '0 0 8px rgba(14,165,233,0.6)' : 'none',
+            }} />
             <span style={{ fontSize: '28px', fontWeight: 700, color: effectiveIsOn ? 'var(--green)' : 'var(--text)' }}>
               {effectiveIsOn ? 'NYALA' : 'MATI'}
             </span>
@@ -107,20 +134,27 @@ export default function Dashboard() {
           <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
             Mode: <span style={{ color: 'var(--text)', fontWeight: 600 }}>{status.mode.toUpperCase()}</span>
           </p>
+          {/* Countdown — hanya tampil kalau ada timer dan tidak connectionLost */}
+          {countdown && !connectionLost && (
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>
+              Mati otomatis:{' '}
+              <span style={{ color: 'var(--accent)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                {countdown}
+              </span>
+            </p>
+          )}
         </div>
 
         {/* Device Status Card */}
         <div style={card}>
           <p style={cardLabel}>Status ESP32</p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '16px 0' }}>
-            <div
-              style={{
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                background: status.deviceOnline ? 'var(--green)' : 'var(--red)',
-              }}
-            />
+            <div style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              background: status.deviceOnline ? 'var(--green)' : 'var(--red)',
+            }} />
             <span style={{ fontSize: '20px', fontWeight: 600 }}>
               {status.deviceOnline ? 'Online' : 'Offline'}
             </span>
@@ -129,7 +163,7 @@ export default function Dashboard() {
             Heartbeat terakhir:{' '}
             {status.lastHeartbeat
               ? new Date(status.lastHeartbeat.replace(' ', 'T') + 'Z').toLocaleTimeString('id-ID', {
-                  timeZone: 'Asia/Jakarta'
+                  timeZone: 'Asia/Jakarta',
                 })
               : '-'}
           </p>
@@ -138,6 +172,36 @@ export default function Dashboard() {
         {/* Kontrol Manual */}
         <div style={card}>
           <p style={cardLabel}>Kontrol Manual</p>
+
+          {/* Input durasi — hanya tampil saat pompa mati dan koneksi oke */}
+          {!effectiveIsOn && !connectionLost && (
+            <div style={{ marginTop: '16px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                Durasi (opsional — kosongkan untuk toggle biasa)
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="number"
+                  min={0}
+                  max={60}
+                  value={inputMinutes}
+                  onChange={e => setInputMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+                  style={inputStyle}
+                />
+                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>menit</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={inputSeconds}
+                  onChange={e => setInputSeconds(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                  style={inputStyle}
+                />
+                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>detik</span>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={handleToggle}
             disabled={loading || connectionLost}
@@ -202,4 +266,15 @@ const cardLabel: React.CSSProperties = {
   color: 'var(--text-muted)',
   textTransform: 'uppercase',
   letterSpacing: '0.06em',
+};
+
+const inputStyle: React.CSSProperties = {
+  width: '60px',
+  padding: '8px',
+  borderRadius: '6px',
+  border: '1px solid var(--border)',
+  background: 'var(--bg)',
+  color: 'var(--text)',
+  fontSize: '14px',
+  textAlign: 'center',
 };
