@@ -9,6 +9,7 @@ import schedulesRoutes from './routes/schedules';
 import logsRoutes from './routes/logs';
 import deviceRoutes from './routes/device';
 import sensorRoutes from './routes/sensor';
+import plantsRoutes from './routes/plants';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,6 +28,7 @@ app.use('/api/schedules', schedulesRoutes);
 app.use('/api/logs', logsRoutes);
 app.use('/api/device', deviceRoutes);
 app.use('/api', sensorRoutes);
+app.use('/api', plantsRoutes);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
