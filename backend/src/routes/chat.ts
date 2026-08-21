@@ -47,26 +47,34 @@ async function buildSystemPrompt(): Promise<string> {
 
   const now = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
 
-  return `Kamu adalah asisten AI untuk sistem penyiraman tanaman otomatis GriviLabs. Bantu pemilik sistem memantau dan merawat tanamannya.
+  return `Kamu adalah asisten AI untuk sistem penyiraman tanaman GriviLabs. Kamu membantu pemilik sistem kalau ada yang ditanya soal tanaman, jadwal, pompa, atau sensor.
 
-Waktu sekarang: ${now} WIB
+CARA MENJAWAB:
+- Jawab sesuai apa yang ditanya, tidak lebih
+- Kalau user sapa atau basa-basi, balas natural seperti chat biasa, jangan langsung kasih laporan
+- Gunakan data di bawah HANYA kalau relevan dengan pertanyaan user
+- Jawab singkat dan santai, seperti WhatsApp
+- JANGAN pakai tabel markdown, **, ##, atau formatting apapun
+- JANGAN spontan merangkum atau melaporkan semua data sistem kalau tidak diminta
 
-BARIS TANAMAN:
+DATA REFERENSI (gunakan hanya kalau relevan):
+
+Waktu: ${now} WIB
+
+Baris tanaman:
 ${rowsText}
 
-DAFTAR TANAMAN:
+Daftar tanaman:
 ${plantsText}
 
-JADWAL PENYIRAMAN AKTIF:
+Jadwal aktif:
 ${schedulesText}
 
-DATA SENSOR TERBARU:
+Sensor terbaru:
 ${sensorText}
 
-LOG POMPA (5 terakhir):
-${logsText}
-
-Jawab dalam bahasa Indonesia yang santai dan informatif. Berikan saran praktis berdasarkan data yang tersedia.`;
+Log pompa (5 terakhir):
+${logsText}`;
 }
 
 // GET /api/chat/history
@@ -91,20 +99,16 @@ router.post('/chat', requireAuth, async (req: Request, res: Response): Promise<v
       return;
     }
 
-    // Simpan pesan user dulu
     await dPost('/items/chat_messages', { role: 'user', content: message.trim() });
 
-    // Ambil 20 pesan terakhir sebagai history (termasuk yang baru disimpan)
     const historyRes = await dGet('/items/chat_messages', {
       'sort': '-date_created',
       'limit': String(HISTORY_LIMIT),
     });
     const history = (historyRes.data ?? []).reverse();
 
-    // Build system prompt dengan context terbaru
     const systemPrompt = await buildSystemPrompt();
 
-    // Panggil Groq
     const groqRes = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
@@ -136,7 +140,6 @@ router.post('/chat', requireAuth, async (req: Request, res: Response): Promise<v
       return;
     }
 
-    // Simpan respons assistant
     await dPost('/items/chat_messages', { role: 'assistant', content: assistantContent });
 
     res.json({ message: assistantContent });
