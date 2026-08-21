@@ -5,6 +5,7 @@ import { logout } from '../lib/api';
 const navItems = [
   { to: '/', label: 'Dashboard', icon: '📊' },
   { to: '/schedules', label: 'Jadwal', icon: '🕐' },
+  { to: '/tanaman', label: 'Tanaman', icon: '🌱' },
   { to: '/logs', label: 'Log', icon: '📋' },
 ];
 
@@ -27,7 +28,6 @@ export default function Navbar() {
   if (isMobile) {
     return (
       <>
-        {/* Top branding header */}
         <header style={{
           position: 'fixed',
           top: 0,
@@ -46,7 +46,6 @@ export default function Navbar() {
           </span>
         </header>
 
-        {/* Bottom navigation */}
         <nav style={{
           position: 'fixed',
           bottom: 0,
@@ -72,15 +71,15 @@ export default function Navbar() {
                   alignItems: 'center',
                   gap: '3px',
                   textDecoration: 'none',
-                  padding: '8px 20px',
+                  padding: '8px 12px',
                   borderRadius: '12px',
                   color: isActive ? 'var(--green)' : 'var(--text-muted)',
                   background: isActive ? 'rgba(14,165,233,0.1)' : 'transparent',
-                  minWidth: '72px',
+                  minWidth: '56px',
                 }}
               >
                 <span style={{ fontSize: '20px' }}>{item.icon}</span>
-                <span style={{ fontSize: '11px', fontWeight: isActive ? 700 : 400 }}>
+                <span style={{ fontSize: '10px', fontWeight: isActive ? 700 : 400 }}>
                   {item.label}
                 </span>
               </Link>
@@ -97,19 +96,18 @@ export default function Navbar() {
               border: 'none',
               color: 'var(--text-muted)',
               cursor: 'pointer',
-              padding: '8px 20px',
-              minWidth: '72px',
+              padding: '8px 12px',
+              minWidth: '56px',
             }}
           >
             <span style={{ fontSize: '20px' }}>🚪</span>
-            <span style={{ fontSize: '11px' }}>Logout</span>
+            <span style={{ fontSize: '10px' }}>Logout</span>
           </button>
         </nav>
       </>
     );
   }
 
-  // Desktop - top nav
   return (
     <nav style={{
       background: 'var(--bg-card)',

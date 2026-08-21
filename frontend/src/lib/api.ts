@@ -5,7 +5,6 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Redirect ke login kalau 401
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -59,6 +58,38 @@ export const updateSchedule = (
 ) => api.put(`/schedules/${id}`, data);
 
 export const deleteSchedule = (id: number) => api.delete(`/schedules/${id}`);
+
+// Rows
+export const getRows = () => api.get('/rows');
+
+export const createRow = (data: { name: string; location: string; notes: string }) =>
+  api.post('/rows', data);
+
+export const updateRow = (id: number, data: { name: string; location: string; notes: string }) =>
+  api.put(`/rows/${id}`, data);
+
+export const deleteRow = (id: number) => api.delete(`/rows/${id}`);
+
+// Plants
+export const getPlants = () => api.get('/plants');
+
+export const createPlant = (data: {
+  name: string;
+  row: number;
+  type: string | null;
+  planted_at: string | null;
+  notes: string | null;
+}) => api.post('/plants', data);
+
+export const updatePlant = (id: number, data: {
+  name: string;
+  row: number;
+  type: string | null;
+  planted_at: string | null;
+  notes: string | null;
+}) => api.put(`/plants/${id}`, data);
+
+export const deletePlant = (id: number) => api.delete(`/plants/${id}`);
 
 // Logs
 export const getLogs = (page = 1, limit = 50) =>
