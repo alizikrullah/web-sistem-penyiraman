@@ -21,7 +21,18 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
 export function requireDevice(req: Request, res: Response, next: NextFunction): void {
   const key = req.headers['x-device-key'];
 
-  if (!key || key !== process.env.DEVICE_API_KEY) {
+  if (!key || key !== process.env.DEVICE_API_KEY_PUMP) {
+    res.status(401).json({ error: 'Device key invalid' });
+    return;
+  }
+
+  next();
+}
+
+export function requireSensorDevice(req: Request, res: Response, next: NextFunction): void {
+  const key = req.headers['x-device-key'];
+
+  if (!key || key !== process.env.DEVICE_API_KEY_SENSOR) {
     res.status(401).json({ error: 'Device key invalid' });
     return;
   }
