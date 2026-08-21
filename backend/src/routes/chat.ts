@@ -5,7 +5,7 @@ import { dGet, dPost } from '../directus';
 const router = Router();
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_MODEL = 'openai/gpt-oss-120b';
 const HISTORY_LIMIT = 20;
 
 async function buildSystemPrompt(): Promise<string> {
