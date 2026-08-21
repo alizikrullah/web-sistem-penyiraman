@@ -108,6 +108,11 @@ export const sendChat = (message: string) => api.post('/chat', { message });
 
 export const clearChatHistory = () => api.delete('/chat/history');
 
+// Insights
+export const getDailyInsight = () => api.get('/insights/daily');
+
+export const refreshDailyInsight = () => api.post('/insights/daily/refresh');
+
 // Logs
 export const getLogs = (page = 1, limit = 50) =>
   api.get(`/logs?page=${page}&limit=${limit}`);
