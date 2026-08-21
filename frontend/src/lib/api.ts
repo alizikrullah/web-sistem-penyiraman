@@ -101,6 +101,13 @@ export const markAsRead = (id: number) => api.patch(`/notifications/${id}/read`)
 
 export const markAllAsRead = () => api.post('/notifications/read-all');
 
+// Chat
+export const getChatHistory = () => api.get('/chat/history');
+
+export const sendChat = (message: string) => api.post('/chat', { message });
+
+export const clearChatHistory = () => api.delete('/chat/history');
+
 // Logs
 export const getLogs = (page = 1, limit = 50) =>
   api.get(`/logs?page=${page}&limit=${limit}`);
