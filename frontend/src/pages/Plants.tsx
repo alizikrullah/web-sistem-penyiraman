@@ -321,7 +321,7 @@ export default function Plants() {
                           <p style={{ fontWeight: 600, fontSize: '14px' }}>{plant.name}</p>
                           <div style={{ display: 'flex', gap: '12px', marginTop: '3px' }}>
                             {plant.type && (
-                              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>🌿 {plant.type}</span>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>🏷️ {plant.type}</span>
                             )}
                             {plant.planted_at && (
                               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
