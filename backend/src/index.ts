@@ -11,6 +11,7 @@ import deviceRoutes from './routes/device';
 import sensorRoutes from './routes/sensor';
 import plantsRoutes from './routes/plants';
 import notificationsRoutes from './routes/notifications';
+import chatRoutes from './routes/chat';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +32,7 @@ app.use('/api/device', deviceRoutes);
 app.use('/api', sensorRoutes);
 app.use('/api', plantsRoutes);
 app.use('/api', notificationsRoutes);
+app.use('/api', chatRoutes);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
