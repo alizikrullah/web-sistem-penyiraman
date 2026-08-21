@@ -4,6 +4,8 @@ import { dGet, dPatch, dPost } from '../directus';
 
 const router = Router();
 
+const MAX_DURATION_SECONDS = 60 * 60; // 1 jam, konsisten sama MAX_PUMP_DURATION_MS di firmware
+
 // Ambil state pompa — inisialisasi kalau belum ada
 export async function getState() {
   const res = await dGet('/items/pump_state');
@@ -38,6 +40,7 @@ router.get('/status', requireAuth, async (_req: Request, res: Response): Promise
     res.json({
       isOn: state.is_on,
       mode: state.mode,
+      pumpOffAt: state.pump_off_at ?? null, // null = tidak ada timer
       lastUpdated: state.date_updated,
       lastHeartbeat: state.last_heartbeat,
       deviceOnline: isDeviceOnline,
@@ -48,9 +51,25 @@ router.get('/status', requireAuth, async (_req: Request, res: Response): Promise
 });
 
 // POST /api/pump/on
-router.post('/pump/on', requireAuth, async (_req: Request, res: Response): Promise<void> => {
+router.post('/pump/on', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
-    await dPatch('/items/pump_state', { is_on: true, mode: 'manual' });
+    const { durationSeconds } = req.body;
+
+    const updateData: Record<string, unknown> = {
+      is_on: true,
+      mode: 'manual',
+      pump_off_at: null, // default: tidak ada timer
+    };
+
+    if (typeof durationSeconds === 'number' && durationSeconds > 0) {
+      if (durationSeconds > MAX_DURATION_SECONDS) {
+        res.status(400).json({ error: 'Durasi maksimal 1 jam (3600 detik)' });
+        return;
+      }
+      updateData.pump_off_at = new Date(Date.now() + durationSeconds * 1000).toISOString();
+    }
+
+    await dPatch('/items/pump_state', updateData);
     await createLog('on', 'manual');
     res.json({ message: 'Pompa dinyalakan' });
   } catch {
@@ -61,7 +80,11 @@ router.post('/pump/on', requireAuth, async (_req: Request, res: Response): Promi
 // POST /api/pump/off
 router.post('/pump/off', requireAuth, async (_req: Request, res: Response): Promise<void> => {
   try {
-    await dPatch('/items/pump_state', { is_on: false, mode: 'manual' });
+    await dPatch('/items/pump_state', {
+      is_on: false,
+      mode: 'manual',
+      pump_off_at: null, // selalu clear timer saat off
+    });
     await createLog('off', 'manual');
     res.json({ message: 'Pompa dimatikan' });
   } catch {
@@ -72,7 +95,11 @@ router.post('/pump/off', requireAuth, async (_req: Request, res: Response): Prom
 // POST /api/mode/auto
 router.post('/mode/auto', requireAuth, async (_req: Request, res: Response): Promise<void> => {
   try {
-    await dPatch('/items/pump_state', { mode: 'auto', is_on: false });
+    await dPatch('/items/pump_state', {
+      mode: 'auto',
+      is_on: false,
+      pump_off_at: null, // clear timer saat balik ke auto
+    });
     await createLog('off', 'system');
     res.json({ message: 'Mode dikembalikan ke auto' });
   } catch {

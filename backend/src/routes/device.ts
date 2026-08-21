@@ -22,9 +22,19 @@ router.get('/poll', requireDevice, async (_req: Request, res: Response): Promise
       durationMinutes: s.duration_minutes,
     }));
 
+    const pumpOffAtMs = state?.pump_off_at
+      ? new Date(state.pump_off_at).getTime()
+      : null;
+
+    const pumpOffInSeconds = pumpOffAtMs !== null
+      ? Math.max(0, Math.round((pumpOffAtMs - Date.now()) / 1000))
+      : null; // null = tidak ada timer
+
     res.json({
       mode: state?.mode ?? 'auto',
       pumpCommand: state?.is_on ? 'on' : 'off',
+      pumpOffAt: state?.pump_off_at ?? null,
+      pumpOffInSeconds,
       schedules,
       serverTime: new Date().toISOString(),
     });
@@ -35,19 +45,28 @@ router.get('/poll', requireDevice, async (_req: Request, res: Response): Promise
 
 // POST /api/device/heartbeat
 router.post('/heartbeat', requireDevice, async (req: Request, res: Response): Promise<void> => {
-  const { isOn, currentState } = req.body;
+  const { isOn, trigger, currentState } = req.body;
 
   try {
-    // Update last_heartbeat
     await dPatch('/items/pump_state', {
       last_heartbeat: new Date().toISOString(),
     });
 
-    // Sync is_on dari ESP32 kalau lagi mode auto
     const state = await getState();
+
+    // Sync state kalau mode auto
     if (state.mode === 'auto' && typeof isOn === 'boolean' && state.is_on !== isOn) {
       await dPatch('/items/pump_state', { is_on: isOn });
       await createLog(isOn ? 'on' : 'off', currentState || 'auto');
+    }
+
+    // ESP32 matiin pompa karena timer habis
+    if (trigger === 'timer' && isOn === false) {
+      await dPatch('/items/pump_state', {
+        is_on: false,
+        pump_off_at: null,
+      });
+      await createLog('off', 'timer');
     }
 
     res.json({ ok: true, serverTime: new Date().toISOString() });
