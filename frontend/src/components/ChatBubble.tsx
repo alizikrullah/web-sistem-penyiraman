@@ -336,7 +336,7 @@ export default function ChatBubble() {
           zIndex: 201,
         }}
       >
-        {isOpen ? <CloseIcon /> : <ChatIcon />}
+        <ChatIcon />
       </button>
     </>
   );
