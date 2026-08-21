@@ -123,10 +123,10 @@ export default function ChatBubble() {
 
   const popupStyle: React.CSSProperties = isMobile ? {
     position: 'fixed',
-    bottom: '80px', // di atas bottom nav
+    bottom: '140px', // di atas bubble button
     left: '12px',
     right: '12px',
-    height: '65vh',
+    height: '60vh',
     background: 'var(--bg-card)',
     border: '1px solid var(--border)',
     borderRadius: '16px',
@@ -287,6 +287,8 @@ export default function ChatBubble() {
                 lineHeight: 1.5,
                 maxHeight: '96px',
                 overflowY: 'auto',
+                fontStyle: 'normal',
+                fontFamily: 'inherit',
               }}
               onInput={(e) => {
                 const el = e.target as HTMLTextAreaElement;
@@ -336,7 +338,7 @@ export default function ChatBubble() {
           zIndex: 201,
         }}
       >
-        <ChatIcon />
+        {isOpen ? <CloseIcon /> : <ChatIcon />}
       </button>
     </>
   );
