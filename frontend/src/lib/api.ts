@@ -91,6 +91,16 @@ export const updatePlant = (id: number, data: {
 
 export const deletePlant = (id: number) => api.delete(`/plants/${id}`);
 
+// Notifikasi
+export const getNotifications = (page = 1, limit = 20) =>
+  api.get(`/notifications?page=${page}&limit=${limit}`);
+
+export const getUnreadCount = () => api.get('/notifications/unread-count');
+
+export const markAsRead = (id: number) => api.patch(`/notifications/${id}/read`);
+
+export const markAllAsRead = () => api.post('/notifications/read-all');
+
 // Logs
 export const getLogs = (page = 1, limit = 50) =>
   api.get(`/logs?page=${page}&limit=${limit}`);

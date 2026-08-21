@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Schedules from './pages/Schedules';
 import Logs from './pages/Logs';
 import Plants from './pages/Plants';
+import Notifications from './pages/Notifications';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -12,42 +13,11 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/schedules"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <Schedules />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/tanaman"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <Plants />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/logs"
-          element={
-            <ProtectedRoute>
-              <Navbar />
-              <Logs />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/" element={<ProtectedRoute><Navbar /><Dashboard /></ProtectedRoute>} />
+        <Route path="/schedules" element={<ProtectedRoute><Navbar /><Schedules /></ProtectedRoute>} />
+        <Route path="/tanaman" element={<ProtectedRoute><Navbar /><Plants /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><Navbar /><Notifications /></ProtectedRoute>} />
+        <Route path="/logs" element={<ProtectedRoute><Navbar /><Logs /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
