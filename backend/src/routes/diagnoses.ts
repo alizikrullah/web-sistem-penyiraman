@@ -18,6 +18,10 @@ const upload = multer({
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL_VISION = 'qwen/qwen3.6-27b';
 
+function stripThinking(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
+
 // POST /api/diagnoses
 router.post('/diagnoses', requireAuth, upload.single('image'), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -40,7 +44,7 @@ router.post('/diagnoses', requireAuth, upload.single('image'), async (req: Reque
 
     const now = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
 
-    const prompt = `Kamu adalah ahli pertanian dan diagnosa penyakit tanaman. Analisis kondisi tanaman dari foto ini.
+    const prompt = `Kamu adalah ahli pertanian. Analisis kondisi tanaman dari foto ini dan berikan diagnosa singkat.
 
 Info tanaman:
 - Nama: ${plant.name}
@@ -48,18 +52,15 @@ Info tanaman:
 - Lokasi: ${plant.row?.name || 'tidak diketahui'}
 - Tanggal tanam: ${plant.planted_at || 'tidak diketahui'}
 - Catatan: ${plant.notes || '-'}
+- Sensor: ${sensor ? `Suhu ${sensor.temperature}°C, Kelembapan ${sensor.humidity}%` : 'tidak ada data'}
+- Waktu: ${now} WIB
 
-Data sensor: ${sensor ? `Suhu ${sensor.temperature}°C, Kelembapan ${sensor.humidity}%` : 'Tidak ada data sensor'}
-
-Waktu: ${now} WIB
-
-Berikan diagnosa dalam teks biasa, bahasa Indonesia santai, tanpa formatting markdown:
-1. Kondisi umum tanaman
-2. Masalah yang terdeteksi (kalau ada)
-3. Kemungkinan penyebab
-4. Saran perawatan
-
-Maksimal 5-6 kalimat, langsung ke poin.`;
+ATURAN KETAT:
+- Tulis HANYA jawaban final, tanpa proses berpikir
+- DILARANG menulis tag <think> atau teks apapun sebelum jawaban
+- DILARANG pakai **, ##, tabel, atau simbol formatting apapun
+- Bahasa Indonesia santai, maksimal 5-6 kalimat
+- Sebutkan: kondisi umum, masalah yang terdeteksi, kemungkinan penyebab, saran perawatan`;
 
     const groqRes = await fetch(GROQ_API_URL, {
       method: 'POST',
@@ -70,6 +71,7 @@ Maksimal 5-6 kalimat, langsung ke poin.`;
       body: JSON.stringify({
         model: GROQ_MODEL_VISION,
         max_tokens: 512,
+        reasoning_effort: 'none',
         messages: [{
           role: 'user',
           content: [
@@ -87,9 +89,11 @@ Maksimal 5-6 kalimat, langsung ke poin.`;
     }
 
     const groqData = await groqRes.json() as any;
-    const content = groqData.choices?.[0]?.message?.content;
+    let content = groqData.choices?.[0]?.message?.content;
 
     if (!content) { res.status(500).json({ error: 'Respons AI kosong' }); return; }
+
+    content = stripThinking(content);
 
     const saved = await dPost('/items/diagnoses', { plant: plantId, image_url: imageUrl, content });
 

@@ -20,6 +20,10 @@ const GROQ_MODEL_TEXT = 'openai/gpt-oss-120b';
 const GROQ_MODEL_VISION = 'qwen/qwen3.6-27b';
 const HISTORY_LIMIT = 20;
 
+function stripThinking(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+}
+
 async function buildSystemPrompt(): Promise<string> {
   const [plantsRes, rowsRes, schedulesRes, sensorRes, logsRes] = await Promise.all([
     dGet('/items/plants', { 'fields': '*,row.name', 'sort': 'name' }),
@@ -57,35 +61,23 @@ async function buildSystemPrompt(): Promise<string> {
 
   const now = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
 
-  return `Kamu adalah asisten AI untuk sistem penyiraman tanaman GriviLabs. Kamu membantu pemilik sistem kalau ada yang ditanya soal tanaman, jadwal, pompa, atau sensor.
+  return `Kamu adalah asisten AI untuk sistem penyiraman tanaman GriviLabs.
 
-CARA MENJAWAB:
-- Jawab sesuai apa yang ditanya, tidak lebih
-- Kalau user sapa atau basa-basi, balas natural seperti chat biasa, jangan langsung kasih laporan
-- Gunakan data di bawah HANYA kalau relevan dengan pertanyaan user
-- Jawab singkat dan santai, seperti WhatsApp
-- JANGAN pakai tabel markdown, **, ##, atau formatting apapun
-- JANGAN spontan merangkum atau melaporkan semua data sistem kalau tidak diminta
+ATURAN KETAT:
+- Tulis HANYA jawaban final, tanpa proses berpikir
+- DILARANG menulis tag <think> atau apapun sebelum jawaban
+- DILARANG pakai **, ##, tabel markdown, atau simbol formatting apapun
+- Jawab singkat, santai, seperti WhatsApp
+- Jawab sesuai yang ditanya saja, tidak perlu laporan lengkap
 - Kalau ada gambar tanaman, analisis kondisinya dan berikan saran perawatan
 
-DATA REFERENSI (gunakan hanya kalau relevan):
-
+DATA REFERENSI:
 Waktu: ${now} WIB
-
-Baris tanaman:
-${rowsText}
-
-Daftar tanaman:
-${plantsText}
-
-Jadwal aktif:
-${schedulesText}
-
-Sensor terbaru:
-${sensorText}
-
-Log pompa (5 terakhir):
-${logsText}`;
+Baris: ${rowsText}
+Tanaman: ${plantsText}
+Jadwal: ${schedulesText}
+Sensor: ${sensorText}
+Log pompa: ${logsText}`;
 }
 
 // GET /api/chat/history
@@ -139,7 +131,6 @@ router.post('/chat', requireAuth, upload.single('image'), async (req: Request, r
 
     const groqMessages: any[] = [{ role: 'system', content: systemPrompt }];
 
-    // History tanpa pesan terakhir (yang baru disimpan)
     const historyWithoutLast = history.slice(0, -1);
     for (const m of historyWithoutLast) {
       groqMessages.push({
@@ -150,7 +141,6 @@ router.post('/chat', requireAuth, upload.single('image'), async (req: Request, r
       });
     }
 
-    // Pesan sekarang
     if (hasImage) {
       const content: any[] = [
         { type: 'image_url', image_url: { url: `data:image/webp;base64,${imageBase64}` } },
@@ -161,13 +151,16 @@ router.post('/chat', requireAuth, upload.single('image'), async (req: Request, r
       groqMessages.push({ role: 'user', content: message });
     }
 
+    const requestBody: any = { model, max_tokens: 1024, messages: groqMessages };
+    if (hasImage) requestBody.reasoning_effort = 'none';
+
     const groqRes = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ model, max_tokens: 1024, messages: groqMessages }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!groqRes.ok) {
@@ -177,12 +170,14 @@ router.post('/chat', requireAuth, upload.single('image'), async (req: Request, r
     }
 
     const groqData = await groqRes.json() as any;
-    const assistantContent = groqData.choices?.[0]?.message?.content;
+    let assistantContent = groqData.choices?.[0]?.message?.content;
 
     if (!assistantContent) {
       res.status(500).json({ error: 'Respons AI kosong' });
       return;
     }
+
+    assistantContent = stripThinking(assistantContent);
 
     await dPost('/items/chat_messages', { role: 'assistant', content: assistantContent, image_url: null });
     res.json({ message: assistantContent, imageUrl });
