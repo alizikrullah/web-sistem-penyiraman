@@ -57,7 +57,6 @@ export default function Plants() {
   const [plantFormData, setPlantFormData] = useState(emptyPlantForm);
   const [editPlantId, setEditPlantId] = useState<number | null>(null);
 
-  // Diagnosa state
   const [diagnosaPlantId, setDiagnosaPlantId] = useState<number | null>(null);
   const [diagnosaImage, setDiagnosaImage] = useState<File | null>(null);
   const [diagnosaPreview, setDiagnosaPreview] = useState<string | null>(null);
@@ -82,7 +81,6 @@ export default function Plants() {
     return acc;
   }, {} as Record<number, Plant[]>);
 
-  // Row handlers
   const handleRowSubmit = async () => {
     if (!rowFormData.name) return;
     setLoadingAction(true);
@@ -115,7 +113,6 @@ export default function Plants() {
     fetchData();
   };
 
-  // Plant handlers
   const openPlantForm = (rowId: number, plant?: Plant) => {
     if (plant) {
       setPlantFormData({ name: plant.name, rowId: plant.row.id, type: plant.type ?? '', planted_at: plant.planted_at ?? '', notes: plant.notes ?? '' });
@@ -164,7 +161,6 @@ export default function Plants() {
     fetchData();
   };
 
-  // Diagnosa handlers
   const openDiagnosa = (plantId: number) => {
     setDiagnosaPlantId(plantId);
     setDiagnosaImage(null);
@@ -207,10 +203,7 @@ export default function Plants() {
       setDiagnosaResult(result);
       setDiagnosaImage(null);
       setDiagnosaPreview(null);
-      // Refresh history kalau sudah terbuka
-      if (showHistory === plantId) {
-        fetchDiagnosaHistory(plantId);
-      }
+      if (showHistory === plantId) fetchDiagnosaHistory(plantId);
     } catch {
       alert('Gagal diagnosa. Coba lagi.');
     } finally {
@@ -248,7 +241,6 @@ export default function Plants() {
         </button>
       </div>
 
-      {/* Row Form */}
       {rowFormOpen && (
         <div style={{ ...card, marginBottom: '16px' }}>
           <h3 style={{ fontWeight: 600, fontSize: '15px', marginBottom: '16px' }}>
@@ -290,7 +282,6 @@ export default function Plants() {
 
             return (
               <div key={row.id} style={card}>
-                {/* Row Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px' }}>
                   <div>
                     <p style={{ fontWeight: 700, fontSize: '16px' }}>{row.name}</p>
@@ -303,7 +294,6 @@ export default function Plants() {
                   </div>
                 </div>
 
-                {/* Plant Form */}
                 {isShowingPlantForm && (
                   <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '14px', marginBottom: '12px' }}>
                     <h4 style={{ fontWeight: 600, fontSize: '14px', marginBottom: '12px' }}>
@@ -338,7 +328,6 @@ export default function Plants() {
                   </div>
                 )}
 
-                {/* Plant List */}
                 {rowPlants.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                     {rowPlants.map(plant => {
@@ -348,7 +337,8 @@ export default function Plants() {
                           <div style={{
                             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                             padding: '10px 12px', background: 'var(--bg)', border: '1px solid var(--border)',
-                            borderRadius: isDiagnosing ? '8px 8px 0 0' : '8px', borderBottom: isDiagnosing ? 'none' : undefined,
+                            borderRadius: isDiagnosing ? '8px 8px 0 0' : '8px',
+                            borderBottom: isDiagnosing ? 'none' : undefined,
                           }}>
                             <div>
                               <p style={{ fontWeight: 600, fontSize: '14px' }}>{plant.name}</p>
@@ -369,7 +359,6 @@ export default function Plants() {
                             </div>
                           </div>
 
-                          {/* Diagnosa Panel */}
                           {isDiagnosing && (
                             <div style={{
                               background: 'var(--bg)', border: '1px solid var(--border)',
@@ -423,17 +412,19 @@ export default function Plants() {
                               ) : (
                                 <div>
                                   {diagnosaResult.image_url && (
-                                    <img
-                                      src={diagnosaResult.image_url}
-                                      alt="Hasil diagnosa"
-                                      style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }}
-                                    />
+                                    <a href={diagnosaResult.image_url} target="_blank" rel="noopener noreferrer">
+                                      <img
+                                        src={diagnosaResult.image_url}
+                                        alt="Hasil diagnosa"
+                                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px', display: 'block', cursor: 'pointer' }}
+                                      />
+                                    </a>
                                   )}
                                   <p style={{ fontSize: '13px', lineHeight: 1.7, color: 'var(--text)', marginBottom: '10px' }}>
                                     {diagnosaResult.content}
                                   </p>
                                   <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button onClick={() => { setDiagnosaResult(null); }} style={{ ...btnGreen, fontSize: '13px' }}>
+                                    <button onClick={() => setDiagnosaResult(null)} style={{ ...btnGreen, fontSize: '13px' }}>
                                       Diagnosa lagi
                                     </button>
                                     <button onClick={() => toggleHistory(plant.id)} style={{ ...btnGhost, fontSize: '13px' }}>
@@ -443,7 +434,6 @@ export default function Plants() {
                                 </div>
                               )}
 
-                              {/* History */}
                               {showHistory === plant.id && (
                                 <div style={{ marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
                                   <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -456,7 +446,13 @@ export default function Plants() {
                                       {(diagnosaHistory[plant.id] ?? []).map(d => (
                                         <div key={d.id} style={{ border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
                                           {d.image_url && (
-                                            <img src={d.image_url} alt="Diagnosa" style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', display: 'block' }} />
+                                            <a href={d.image_url} target="_blank" rel="noopener noreferrer">
+                                              <img
+                                                src={d.image_url}
+                                                alt="Diagnosa"
+                                                style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', display: 'block', cursor: 'pointer' }}
+                                              />
+                                            </a>
                                           )}
                                           <div style={{ padding: '10px' }}>
                                             <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--text)', marginBottom: '6px' }}>{d.content}</p>
