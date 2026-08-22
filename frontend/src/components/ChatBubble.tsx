@@ -5,6 +5,7 @@ interface ChatMessage {
   id: number;
   role: 'user' | 'assistant';
   content: string;
+  image_url: string | null;
   date_created: string;
 }
 
@@ -16,8 +17,15 @@ const ChatIcon = () => (
 
 const CloseIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="6" x2="6" y2="18"/>
-    <line x1="6" y1="6" x2="18" y2="18"/>
+    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+
+const ImageIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+    <circle cx="8.5" cy="8.5" r="1.5"/>
+    <polyline points="21 15 16 10 5 21"/>
   </svg>
 );
 
@@ -26,10 +34,13 @@ export default function ChatBubble() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -57,36 +68,52 @@ export default function ChatBubble() {
   }, [isOpen, initialized, fetchHistory]);
 
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, 50);
-    }
+    if (isOpen) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'auto' }), 50);
   }, [isOpen]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
   const handleSend = async () => {
-    if (!input.trim() || loading) return;
+    if ((!input.trim() && !imageFile) || loading) return;
     const userMessage = input.trim();
+    const userImage = imageFile;
+    const userPreview = imagePreview;
     setInput('');
+    clearImage();
 
     setMessages(prev => [...prev, {
       id: Date.now(),
       role: 'user',
-      content: userMessage,
+      content: userMessage || '[Gambar]',
+      image_url: userPreview,
       date_created: new Date().toISOString(),
     }]);
     setLoading(true);
 
     try {
-      const res = await sendChat(userMessage);
+      const res = await sendChat(userMessage, userImage || undefined);
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
         content: res.data.message,
+        image_url: null,
         date_created: new Date().toISOString(),
       }]);
     } catch {
@@ -94,6 +121,7 @@ export default function ChatBubble() {
         id: Date.now() + 1,
         role: 'assistant',
         content: 'Maaf, terjadi kesalahan. Coba lagi.',
+        image_url: null,
         date_created: new Date().toISOString(),
       }]);
     } finally {
@@ -108,22 +136,15 @@ export default function ChatBubble() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
   const formatTime = (ts: string) =>
-    new Date(ts).toLocaleTimeString('id-ID', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Asia/Jakarta',
-    });
+    new Date(ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
 
   const popupStyle: React.CSSProperties = isMobile ? {
     position: 'fixed',
-    bottom: '140px', // di atas bubble button
+    bottom: '140px',
     left: '12px',
     right: '12px',
     height: '60vh',
@@ -157,13 +178,9 @@ export default function ChatBubble() {
         <div style={popupStyle}>
           {/* Header */}
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '12px 16px',
-            borderBottom: '1px solid var(--border)',
-            background: 'var(--bg-card)',
-            flexShrink: 0,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '12px 16px', borderBottom: '1px solid var(--border)',
+            background: 'var(--bg-card)', flexShrink: 0,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '16px' }}>💬</span>
@@ -173,83 +190,59 @@ export default function ChatBubble() {
               {messages.length > 0 && (
                 <button onClick={handleClear} style={btnGhost}>Hapus</button>
               )}
-              <button
-                onClick={() => setIsOpen(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '4px',
-                }}
-              >
+              <button onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
                 <CloseIcon />
               </button>
             </div>
           </div>
 
           {/* Messages */}
-          <div style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '12px',
-          }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {loadingHistory ? (
-              <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '32px', fontSize: '14px' }}>
-                Memuat riwayat...
-              </p>
+              <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '32px', fontSize: '14px' }}>Memuat riwayat...</p>
             ) : messages.length === 0 ? (
               <div style={{ textAlign: 'center', marginTop: '32px' }}>
                 <p style={{ fontSize: '32px', marginBottom: '8px' }}>🌱</p>
                 <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.6 }}>
                   Tanya apa saja tentang tanaman lo.<br />
-                  Gua punya akses ke data tanaman, jadwal, sensor, dan log pompa.
+                  Bisa kirim foto juga buat analisis kondisi tanaman.
                 </p>
               </div>
             ) : (
               messages.map(msg => (
-                <div key={msg.id} style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                  gap: '4px',
-                }}>
+                <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start', gap: '4px' }}>
                   <div style={{
                     maxWidth: '85%',
-                    padding: '8px 12px',
                     borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                     background: msg.role === 'user' ? 'var(--green)' : 'var(--bg)',
                     border: msg.role === 'assistant' ? '1px solid var(--border)' : 'none',
-                    color: msg.role === 'user' ? '#fff' : 'var(--text)',
-                    fontSize: '13px',
-                    lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
+                    overflow: 'hidden',
                   }}>
-                    {msg.content}
+                    {msg.image_url && (
+                      <img
+                        src={msg.image_url}
+                        alt="Gambar"
+                        style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', display: 'block' }}
+                      />
+                    )}
+                    {msg.content !== '[Gambar]' && (
+                      <p style={{
+                        padding: '8px 12px', margin: 0,
+                        color: msg.role === 'user' ? '#fff' : 'var(--text)',
+                        fontSize: '13px', lineHeight: 1.6,
+                        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                      }}>
+                        {msg.content}
+                      </p>
+                    )}
                   </div>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                    {formatTime(msg.date_created)}
-                  </span>
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatTime(msg.date_created)}</span>
                 </div>
               ))
             )}
-
             {loading && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <div style={{
-                  padding: '8px 12px',
-                  borderRadius: '14px 14px 14px 4px',
-                  background: 'var(--bg)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-muted)',
-                  fontSize: '13px',
-                }}>
+                <div style={{ padding: '8px 12px', borderRadius: '14px 14px 14px 4px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '13px' }}>
                   Sedang berpikir...
                 </div>
               </div>
@@ -258,62 +251,74 @@ export default function ChatBubble() {
           </div>
 
           {/* Input */}
-          <div style={{
-            borderTop: '1px solid var(--border)',
-            padding: '12px 16px',
-            display: 'flex',
-            gap: '8px',
-            alignItems: 'flex-end',
-            background: 'var(--bg-card)',
-            flexShrink: 0,
-          }}>
-            <textarea
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={loading}
-              placeholder="Tulis pesan... (Enter kirim)"
-              rows={1}
-              style={{
-                flex: 1,
-                background: 'var(--bg)',
-                border: '1px solid var(--border)',
-                borderRadius: '10px',
-                padding: '8px 12px',
-                color: 'var(--text)',
-                fontSize: '13px',
-                resize: 'none',
-                outline: 'none',
-                lineHeight: 1.5,
-                maxHeight: '96px',
-                overflowY: 'auto',
-                fontStyle: 'normal',
-                fontFamily: 'inherit',
-              }}
-              onInput={(e) => {
-                const el = e.target as HTMLTextAreaElement;
-                el.style.height = 'auto';
-                el.style.height = Math.min(el.scrollHeight, 96) + 'px';
-              }}
-            />
-            <button
-              onClick={handleSend}
-              disabled={loading || !input.trim()}
-              style={{
-                padding: '8px 14px',
-                borderRadius: '10px',
-                border: 'none',
-                background: 'var(--green)',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: '13px',
-                cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-                opacity: loading || !input.trim() ? 0.5 : 1,
-                flexShrink: 0,
-              }}
-            >
-              Kirim
-            </button>
+          <div style={{ borderTop: '1px solid var(--border)', padding: '12px 16px', background: 'var(--bg-card)', flexShrink: 0 }}>
+            {/* Image preview */}
+            {imagePreview && (
+              <div style={{ position: 'relative', display: 'inline-block', marginBottom: '8px' }}>
+                <img src={imagePreview} alt="Preview" style={{ height: '64px', width: '64px', objectFit: 'cover', borderRadius: '8px', display: 'block' }} />
+                <button
+                  onClick={clearImage}
+                  style={{
+                    position: 'absolute', top: '-6px', right: '-6px',
+                    width: '18px', height: '18px', borderRadius: '50%',
+                    background: 'var(--red)', border: 'none', color: '#fff',
+                    fontSize: '10px', cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                  }}
+                >✕</button>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleImageSelect}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  padding: '8px', borderRadius: '10px', border: '1px solid var(--border)',
+                  background: imageFile ? 'rgba(14,165,233,0.1)' : 'transparent',
+                  color: imageFile ? 'var(--green)' : 'var(--text-muted)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0,
+                }}
+              >
+                <ImageIcon />
+              </button>
+              <textarea
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={loading}
+                placeholder="Tulis pesan... (Enter kirim)"
+                rows={1}
+                style={{
+                  flex: 1, background: 'var(--bg)', border: '1px solid var(--border)',
+                  borderRadius: '10px', padding: '8px 12px', color: 'var(--text)',
+                  fontSize: '13px', resize: 'none', outline: 'none', lineHeight: 1.5,
+                  maxHeight: '96px', overflowY: 'auto', fontStyle: 'normal', fontFamily: 'inherit',
+                }}
+                onInput={(e) => {
+                  const el = e.target as HTMLTextAreaElement;
+                  el.style.height = 'auto';
+                  el.style.height = Math.min(el.scrollHeight, 96) + 'px';
+                }}
+              />
+              <button
+                onClick={handleSend}
+                disabled={loading || (!input.trim() && !imageFile)}
+                style={{
+                  padding: '8px 14px', borderRadius: '10px', border: 'none',
+                  background: 'var(--green)', color: '#fff', fontWeight: 700, fontSize: '13px',
+                  cursor: loading || (!input.trim() && !imageFile) ? 'not-allowed' : 'pointer',
+                  opacity: loading || (!input.trim() && !imageFile) ? 0.5 : 1, flexShrink: 0,
+                }}
+              >
+                Kirim
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -327,15 +332,9 @@ export default function ChatBubble() {
           right: isMobile ? '16px' : '24px',
           width: isMobile ? '48px' : '56px',
           height: isMobile ? '48px' : '56px',
-          borderRadius: '50%',
-          background: 'var(--green)',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 16px rgba(14,165,233,0.4)',
-          zIndex: 201,
+          borderRadius: '50%', background: 'var(--green)', border: 'none',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 4px 16px rgba(14,165,233,0.4)', zIndex: 201,
         }}
       >
         {isOpen ? <CloseIcon /> : <ChatIcon />}
@@ -345,11 +344,7 @@ export default function ChatBubble() {
 }
 
 const btnGhost: React.CSSProperties = {
-  background: 'transparent',
-  border: '1px solid var(--border)',
-  color: 'var(--text-muted)',
-  borderRadius: '6px',
-  padding: '4px 10px',
-  cursor: 'pointer',
-  fontSize: '12px',
+  background: 'transparent', border: '1px solid var(--border)',
+  color: 'var(--text-muted)', borderRadius: '6px',
+  padding: '4px 10px', cursor: 'pointer', fontSize: '12px',
 };

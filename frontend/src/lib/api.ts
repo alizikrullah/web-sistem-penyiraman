@@ -104,9 +104,25 @@ export const markAllAsRead = () => api.post('/notifications/read-all');
 // Chat
 export const getChatHistory = () => api.get('/chat/history');
 
-export const sendChat = (message: string) => api.post('/chat', { message });
+export const sendChat = (message: string, image?: File) => {
+  const formData = new FormData();
+  if (message) formData.append('message', message);
+  if (image) formData.append('image', image);
+  return api.post('/chat', formData);
+};
 
 export const clearChatHistory = () => api.delete('/chat/history');
+
+// Diagnoses
+export const diagnosePlant = (plantId: number, image: File) => {
+  const formData = new FormData();
+  formData.append('plant_id', String(plantId));
+  formData.append('image', image);
+  return api.post('/diagnoses', formData);
+};
+
+export const getDiagnoses = (plantId: number) =>
+  api.get(`/diagnoses/${plantId}`);
 
 // Insights
 export const getDailyInsight = () => api.get('/insights/daily');
