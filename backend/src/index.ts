@@ -13,6 +13,7 @@ import plantsRoutes from './routes/plants';
 import notificationsRoutes from './routes/notifications';
 import chatRoutes from './routes/chat';
 import insightsRoutes from './routes/insights';
+import diagnosesRoutes from './routes/diagnoses';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -35,6 +36,7 @@ app.use('/api', plantsRoutes);
 app.use('/api', notificationsRoutes);
 app.use('/api', chatRoutes);
 app.use('/api', insightsRoutes);
+app.use('/api', diagnosesRoutes);
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
