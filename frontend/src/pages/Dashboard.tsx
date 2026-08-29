@@ -29,8 +29,10 @@ export default function Dashboard() {
   const [loadingInsight, setLoadingInsight] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastSuccessfulFetch, setLastSuccessfulFetch] = useState(Date.now());
-  const [inputMinutes, setInputMinutes] = useState(0);
-  const [inputSeconds, setInputSeconds] = useState(0);
+
+  // Pakai string supaya bisa dihapus dan diketik bebas
+  const [inputMinutes, setInputMinutes] = useState<string>('');
+  const [inputSeconds, setInputSeconds] = useState<string>('');
   const [countdown, setCountdown] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -119,7 +121,7 @@ export default function Dashboard() {
       if (effectiveIsOn) {
         await pumpOff();
       } else {
-        const totalSeconds = inputMinutes * 60 + inputSeconds;
+        const totalSeconds = (parseInt(inputMinutes) || 0) * 60 + (parseInt(inputSeconds) || 0);
         await pumpOn(totalSeconds > 0 ? totalSeconds : undefined);
       }
       await fetchStatus();
@@ -159,16 +161,14 @@ export default function Dashboard() {
       timeZone: 'Asia/Jakarta',
     });
 
-  // Card components
   const StatusPompaCard = (
     <div style={card}>
       <p style={cardLabel}>Status Pompa</p>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}>
         <div style={{
-          width: '14px', height: '14px', borderRadius: '50%',
+          width: '14px', height: '14px', borderRadius: '50%', flexShrink: 0,
           background: effectiveIsOn ? 'var(--green)' : 'var(--text-muted)',
           boxShadow: effectiveIsOn ? '0 0 8px rgba(14,165,233,0.6)' : 'none',
-          flexShrink: 0,
         }} />
         <span style={{ fontSize: '28px', fontWeight: 700, color: effectiveIsOn ? 'var(--green)' : 'var(--text)' }}>
           {effectiveIsOn ? 'NYALA' : 'MATI'}
@@ -250,14 +250,28 @@ export default function Dashboard() {
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <input
-              type="number" min={0} max={60} value={inputMinutes}
-              onChange={e => setInputMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+              type="number"
+              min={0}
+              max={60}
+              value={inputMinutes}
+              placeholder="0"
+              onChange={e => {
+                const val = e.target.value.replace(/[^0-9]/g, '');
+                if (val === '' || parseInt(val) <= 60) setInputMinutes(val);
+              }}
               style={inputStyle}
             />
             <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>menit</span>
             <input
-              type="number" min={0} max={59} value={inputSeconds}
-              onChange={e => setInputSeconds(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+              type="number"
+              min={0}
+              max={59}
+              value={inputSeconds}
+              placeholder="0"
+              onChange={e => {
+                const val = e.target.value.replace(/[^0-9]/g, '');
+                if (val === '' || parseInt(val) <= 59) setInputSeconds(val);
+              }}
               style={inputStyle}
             />
             <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>detik</span>
@@ -340,7 +354,6 @@ export default function Dashboard() {
       )}
 
       {isMobile ? (
-        // Mobile layout
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {StatusPompaCard}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -352,16 +365,13 @@ export default function Dashboard() {
           {InsightCard}
         </div>
       ) : (
-        // Desktop layout
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Baris 1: 4 stat cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
             {StatusPompaCard}
             {StatusESP32Card}
             {SuhuCard}
             {KelembapanCard}
           </div>
-          {/* Baris 2: Kontrol + Insight */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
             {KontrolCard}
             {InsightCard}
@@ -372,25 +382,15 @@ export default function Dashboard() {
   );
 }
 
-const pageStyle: React.CSSProperties = {
-  padding: '28px 24px',
-  maxWidth: '1000px',
-  margin: '0 auto',
-};
+const pageStyle: React.CSSProperties = { padding: '28px 24px', maxWidth: '1000px', margin: '0 auto' };
 
 const card: React.CSSProperties = {
-  background: 'var(--bg-card)',
-  border: '1px solid var(--border)',
-  borderRadius: '12px',
-  padding: '20px',
+  background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px',
 };
 
 const cardLabel: React.CSSProperties = {
-  fontSize: '12px', fontWeight: 600,
-  color: 'var(--text-muted)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  margin: 0,
+  fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)',
+  textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0,
 };
 
 const inputStyle: React.CSSProperties = {

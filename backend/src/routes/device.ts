@@ -2,11 +2,8 @@ import { Router, Request, Response } from 'express';
 import { requireDevice } from '../middleware/auth';
 import { dGet, dPatch } from '../directus';
 import { getState, createLog } from './pump';
-import { createNotificationIfNew } from './notifications';
 
 const router = Router();
-
-const PUMP_WARNING_MINUTES = 45;
 
 // GET /api/device/poll
 router.get('/poll', requireDevice, async (_req: Request, res: Response): Promise<void> => {
@@ -24,6 +21,25 @@ router.get('/poll', requireDevice, async (_req: Request, res: Response): Promise
       startTime: s.start_time,
       durationMinutes: s.duration_minutes,
     }));
+
+    // Cek apakah timer sudah expired di server
+    // Ini handle kasus ESP32 restart atau koneksi putus saat timer aktif
+    if (state?.pump_off_at && state?.is_on) {
+      const pumpOffAtMs = new Date(state.pump_off_at).getTime();
+      if (Date.now() >= pumpOffAtMs) {
+        await dPatch('/items/pump_state', { is_on: false, pump_off_at: null });
+        await createLog('off', 'timer');
+        res.json({
+          mode: state?.mode ?? 'auto',
+          pumpCommand: 'off',
+          pumpOffAt: null,
+          pumpOffInSeconds: null,
+          schedules,
+          serverTime: new Date().toISOString(),
+        });
+        return;
+      }
+    }
 
     const pumpOffAtMs = state?.pump_off_at
       ? new Date(state.pump_off_at).getTime()
@@ -67,26 +83,6 @@ router.post('/heartbeat', requireDevice, async (req: Request, res: Response): Pr
     if (trigger === 'timer' && isOn === false) {
       await dPatch('/items/pump_state', { is_on: false, pump_off_at: null });
       await createLog('off', 'timer');
-    }
-
-    // Cek apakah pompa nyala terlalu lama (manual mode, tanpa timer)
-    if (state.is_on && state.mode === 'manual' && !state.pump_off_at) {
-      const logsRes = await dGet('/items/logs', {
-        'filter[event][_eq]': 'on',
-        'sort': '-timestamp',
-        'limit': '1',
-      });
-      if (logsRes.data?.length > 0) {
-        const minutesOn = (Date.now() - new Date(logsRes.data[0].timestamp).getTime()) / 60000;
-        if (minutesOn >= PUMP_WARNING_MINUTES) {
-          await createNotificationIfNew(
-            'Pompa Nyala Terlalu Lama',
-            `Pompa sudah menyala selama ${Math.floor(minutesOn)} menit tanpa timer. Periksa sistem penyiraman.`,
-            'warning',
-            60
-          );
-        }
-      }
     }
 
     res.json({ ok: true, serverTime: new Date().toISOString() });
