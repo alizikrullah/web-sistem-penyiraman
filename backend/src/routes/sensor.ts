@@ -76,10 +76,10 @@ router.get('/sensor', requireAuth, async (_req: Request, res: Response): Promise
     }
 
     res.json({
-      temperature: latest.temperature,
-      humidity: latest.humidity,
-      timestamp: latest.date_created,
-    });
+    temperature: latest.temperature != null ? parseFloat(latest.temperature) : null,
+    humidity: latest.humidity != null ? parseFloat(latest.humidity) : null,
+    timestamp: latest.date_created,
+  });
   } catch {
     res.status(500).json({ error: 'Gagal ambil data sensor' });
   }
