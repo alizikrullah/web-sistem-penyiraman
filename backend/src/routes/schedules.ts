@@ -11,6 +11,7 @@ function mapSchedule(s: any) {
     days: s.days,
     startTime: s.start_time,
     durationMinutes: s.duration_minutes,
+    durationSeconds: s.duration_seconds ?? 0,
     isActive: s.is_active,
     createdAt: s.date_created,
   };
@@ -28,9 +29,9 @@ router.get('/', requireAuth, async (_req: Request, res: Response): Promise<void>
 
 // POST /api/schedules
 router.post('/', requireAuth, async (req: Request, res: Response): Promise<void> => {
-  const { label, days, startTime, durationMinutes } = req.body;
+  const { label, days, startTime, durationMinutes, durationSeconds } = req.body;
 
-  if (!label || !days || !startTime || !durationMinutes) {
+  if (!label || !days || !startTime || durationMinutes === undefined) {
     res.status(400).json({ error: 'Semua field wajib diisi' });
     return;
   }
@@ -45,6 +46,7 @@ router.post('/', requireAuth, async (req: Request, res: Response): Promise<void>
       days,
       start_time: startTime,
       duration_minutes: durationMinutes,
+      duration_seconds: durationSeconds ?? 0,
       is_active: true,
     });
     res.status(201).json(mapSchedule(result.data));
@@ -56,7 +58,7 @@ router.post('/', requireAuth, async (req: Request, res: Response): Promise<void>
 // PUT /api/schedules/:id
 router.put('/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  const { label, days, startTime, durationMinutes, isActive } = req.body;
+  const { label, days, startTime, durationMinutes, durationSeconds, isActive } = req.body;
 
   try {
     const result = await dPatch(`/items/schedules/${id}`, {
@@ -64,6 +66,7 @@ router.put('/:id', requireAuth, async (req: Request, res: Response): Promise<voi
       days,
       start_time: startTime,
       duration_minutes: durationMinutes,
+      duration_seconds: durationSeconds ?? 0,
       is_active: isActive,
     });
     res.json(mapSchedule(result.data));

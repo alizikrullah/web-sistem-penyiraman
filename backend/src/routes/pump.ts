@@ -32,13 +32,43 @@ router.get('/status', requireAuth, async (_req: Request, res: Response): Promise
   try {
     let state = await getState();
 
-    // Auto-expire timer kalau sudah lewat waktunya
+    // Auto-expire timer manual kalau sudah lewat waktunya
     if (state.pump_off_at && state.is_on) {
       const pumpOffAtMs = new Date(state.pump_off_at).getTime();
       if (Date.now() >= pumpOffAtMs) {
         await dPatch('/items/pump_state', { is_on: false, pump_off_at: null });
         await createLog('off', 'timer');
         state = { ...state, is_on: false, pump_off_at: null };
+      }
+    }
+
+    // Hitung kapan jadwal auto selesai
+    let scheduleEndAt: string | null = null;
+    if (state.is_on && state.mode === 'auto') {
+      try {
+        const schedulesRes = await dGet('/items/schedules', { 'filter[is_active][_eq]': 'true' });
+        const schedules = schedulesRes.data ?? [];
+
+        const now = new Date();
+        const wibNow = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+        const todayDay = ['sun','mon','tue','wed','thu','fri','sat'][wibNow.getUTCDay()];
+        const curTotalSeconds = wibNow.getUTCHours() * 3600 + wibNow.getUTCMinutes() * 60 + wibNow.getUTCSeconds();
+
+        for (const s of schedules) {
+          if (!(s.days ?? []).includes(todayDay)) continue;
+          const [h, m] = (s.start_time || '00:00').split(':').map(Number);
+          const startTotalSeconds = h * 3600 + m * 60;
+          const durationTotalSeconds = (s.duration_minutes ?? 0) * 60 + (s.duration_seconds ?? 0);
+          const endTotalSeconds = startTotalSeconds + durationTotalSeconds;
+
+          if (curTotalSeconds >= startTotalSeconds && curTotalSeconds < endTotalSeconds) {
+            const remainingSeconds = endTotalSeconds - curTotalSeconds;
+            scheduleEndAt = new Date(now.getTime() + remainingSeconds * 1000).toISOString();
+            break;
+          }
+        }
+      } catch {
+        // silent fail, countdown tidak tampil tapi sistem tetap jalan
       }
     }
 
@@ -50,6 +80,7 @@ router.get('/status', requireAuth, async (_req: Request, res: Response): Promise
       isOn: state.is_on,
       mode: state.mode,
       pumpOffAt: state.pump_off_at ?? null,
+      scheduleEndAt,
       lastUpdated: state.date_updated,
       lastHeartbeat: state.last_heartbeat,
       deviceOnline: isDeviceOnline,

@@ -20,10 +20,10 @@ router.get('/poll', requireDevice, async (_req: Request, res: Response): Promise
       days: s.days,
       startTime: s.start_time,
       durationMinutes: s.duration_minutes,
+      durationSeconds: s.duration_seconds ?? 0,
     }));
 
     // Cek apakah timer sudah expired di server
-    // Ini handle kasus ESP32 restart atau koneksi putus saat timer aktif
     if (state?.pump_off_at && state?.is_on) {
       const pumpOffAtMs = new Date(state.pump_off_at).getTime();
       if (Date.now() >= pumpOffAtMs) {
