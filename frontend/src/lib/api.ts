@@ -60,6 +60,7 @@ export const updateSchedule = (
 ) => api.put(`/schedules/${id}`, data);
 
 export const deleteSchedule = (id: number) => api.delete(`/schedules/${id}`);
+export const getScheduleRecommendations = () => api.post('/schedules/recommend');
 
 // Rows
 export const getRows = () => api.get('/rows');
