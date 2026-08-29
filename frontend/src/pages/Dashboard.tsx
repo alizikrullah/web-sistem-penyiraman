@@ -102,7 +102,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!status?.pumpOffAt || !status?.isOn) { setCountdown(null); return; }
     const update = () => {
-      const remaining = new Date(status.pumpOffAt!).getTime() - Date.now();
+      const remaining = new Date(status.pumpOffAt!.replace(' ', 'T') + 'Z').getTime() - Date.now();
       if (remaining <= 0) {
         setCountdown('00:00');
         fetchStatus(); // langsung fetch status baru saat timer habis
