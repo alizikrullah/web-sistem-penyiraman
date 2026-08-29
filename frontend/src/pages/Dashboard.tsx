@@ -103,7 +103,11 @@ export default function Dashboard() {
     if (!status?.pumpOffAt || !status?.isOn) { setCountdown(null); return; }
     const update = () => {
       const remaining = new Date(status.pumpOffAt!).getTime() - Date.now();
-      if (remaining <= 0) { setCountdown('00:00'); return; }
+      if (remaining <= 0) {
+        setCountdown('00:00');
+        fetchStatus(); // langsung fetch status baru saat timer habis
+        return;
+      }
       const totalSeconds = Math.ceil(remaining / 1000);
       const m = Math.floor(totalSeconds / 60);
       const s = totalSeconds % 60;
@@ -112,7 +116,7 @@ export default function Dashboard() {
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [status?.pumpOffAt, status?.isOn]);
+  }, [status?.pumpOffAt, status?.isOn, fetchStatus]);
 
   const handleToggle = async () => {
     if (!status) return;
