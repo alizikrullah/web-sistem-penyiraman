@@ -17,10 +17,22 @@ interface Schedule {
   days: string[];
   startTime: string;
   durationMinutes: number;
+  durationSeconds: number;
   isActive: boolean;
 }
 
-const emptyForm = { label: '', days: [] as string[], startTime: '06:00', durationMinutes: 15 };
+const emptyForm = {
+  label: '',
+  days: [] as string[],
+  startTime: '06:00',
+  durationMinutes: 15,
+  durationSeconds: 0,
+};
+
+const formatDuration = (minutes: number, seconds: number) => {
+  if (seconds > 0) return `${minutes} menit ${seconds} detik`;
+  return `${minutes} menit`;
+};
 
 export default function Schedules() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -49,7 +61,11 @@ export default function Schedules() {
     try {
       if (editId !== null) {
         const current = schedules.find((s) => s.id === editId);
-        await updateSchedule(editId, { ...form, isActive: current?.isActive ?? true });
+        await updateSchedule(editId, {
+          ...form,
+          durationSeconds: form.durationSeconds,
+          isActive: current?.isActive ?? true,
+        });
       } else {
         await createSchedule(form);
       }
@@ -63,7 +79,13 @@ export default function Schedules() {
   };
 
   const handleEdit = (s: Schedule) => {
-    setForm({ label: s.label, days: s.days, startTime: s.startTime, durationMinutes: s.durationMinutes });
+    setForm({
+      label: s.label,
+      days: s.days,
+      startTime: s.startTime,
+      durationMinutes: s.durationMinutes,
+      durationSeconds: s.durationSeconds,
+    });
     setEditId(s.id);
     setShowForm(true);
   };
@@ -80,6 +102,7 @@ export default function Schedules() {
       days: s.days,
       startTime: s.startTime,
       durationMinutes: s.durationMinutes,
+      durationSeconds: s.durationSeconds,
       isActive: !s.isActive,
     });
     fetchSchedules();
@@ -117,12 +140,8 @@ export default function Schedules() {
                     key={d.key}
                     onClick={() => toggleDay(d.key)}
                     style={{
-                      padding: '5px 10px',
-                      borderRadius: '20px',
-                      border: '1px solid',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
+                      padding: '5px 10px', borderRadius: '20px', border: '1px solid',
+                      fontSize: '12px', fontWeight: 600, cursor: 'pointer',
                       borderColor: form.days.includes(d.key) ? 'var(--green)' : 'var(--border)',
                       background: form.days.includes(d.key) ? 'rgba(14,165,233,0.1)' : 'transparent',
                       color: form.days.includes(d.key) ? 'var(--green)' : 'var(--text-muted)',
@@ -144,15 +163,35 @@ export default function Schedules() {
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Durasi (menit)</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={60}
-                  value={form.durationMinutes}
-                  onChange={(e) => setForm((f) => ({ ...f, durationMinutes: Number(e.target.value) }))}
-                  style={inputStyle}
-                />
+                <label style={labelStyle}>Durasi</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '0px' }}>
+                  <input
+                    type="number"
+                    min={0}
+                    max={60}
+                    value={form.durationMinutes}
+                    placeholder="0"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      if (val === '' || parseInt(val) <= 60) setForm(f => ({ ...f, durationMinutes: val === '' ? 0 : parseInt(val) }));
+                    }}
+                    style={{ ...inputStyle, width: '60px', textAlign: 'center' }}
+                  />
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>mnt</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={form.durationSeconds}
+                    placeholder="0"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      if (val === '' || parseInt(val) <= 59) setForm(f => ({ ...f, durationSeconds: val === '' ? 0 : parseInt(val) }));
+                    }}
+                    style={{ ...inputStyle, width: '60px', textAlign: 'center' }}
+                  />
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>dtk</span>
+                </div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
@@ -174,85 +213,44 @@ export default function Schedules() {
           {schedules.map((s) => (
             <div
               key={s.id}
-              style={{
-                ...card,
-                opacity: s.isActive ? 1 : 0.5,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-              }}
+              style={{ ...card, opacity: s.isActive ? 1 : 0.5, display: 'flex', flexDirection: 'column', gap: '12px' }}
             >
-              {/* Info */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <p style={{ fontWeight: 700, fontSize: '16px', marginBottom: '8px' }}>{s.label}</p>
-                  {/* Hari sebagai chips */}
                   <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                    {DAYS.map((d) => (
-                      s.days.includes(d.key) && (
-                        <span
-                          key={d.key}
-                          style={{
-                            padding: '2px 8px',
-                            borderRadius: '20px',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            background: 'rgba(14,165,233,0.1)',
-                            color: 'var(--green)',
-                          }}
-                        >
-                          {d.label}
-                        </span>
-                      )
+                    {DAYS.map((d) => s.days.includes(d.key) && (
+                      <span key={d.key} style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, background: 'rgba(14,165,233,0.1)', color: 'var(--green)' }}>
+                        {d.label}
+                      </span>
                     ))}
                   </div>
-                  {/* Jam dan durasi */}
                   <div style={{ display: 'flex', gap: '16px' }}>
                     <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
                       🕐 <strong style={{ color: 'var(--text)' }}>{s.startTime}</strong>
                     </span>
                     <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                      ⏱ <strong style={{ color: 'var(--text)' }}>{s.durationMinutes} menit</strong>
+                      ⏱ <strong style={{ color: 'var(--text)' }}>{formatDuration(s.durationMinutes, s.durationSeconds)}</strong>
                     </span>
                   </div>
                 </div>
-                {/* Status badge */}
                 <span style={{
-                  padding: '3px 10px',
-                  borderRadius: '20px',
-                  fontSize: '11px',
-                  fontWeight: 600,
+                  padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 600,
                   background: s.isActive ? 'rgba(14,165,233,0.1)' : 'rgba(100,116,139,0.1)',
-                  color: s.isActive ? 'var(--green)' : 'var(--text-muted)',
-                  whiteSpace: 'nowrap',
+                  color: s.isActive ? 'var(--green)' : 'var(--text-muted)', whiteSpace: 'nowrap',
                 }}>
                   {s.isActive ? 'Aktif' : 'Nonaktif'}
                 </span>
               </div>
 
-              {/* Tombol */}
-              <div style={{
-                display: 'flex',
-                gap: '8px',
-                borderTop: '1px solid var(--border)',
-                paddingTop: '12px',
-              }}>
-                <button
-                  onClick={() => handleToggleActive(s)}
-                  style={{ ...btnGhost, flex: 1, fontSize: '12px' }}
-                >
+              <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                <button onClick={() => handleToggleActive(s)} style={{ ...btnGhost, flex: 1, fontSize: '12px' }}>
                   {s.isActive ? 'Nonaktifkan' : 'Aktifkan'}
                 </button>
-                <button
-                  onClick={() => handleEdit(s)}
-                  style={{ ...btnGhost, flex: 1, fontSize: '12px' }}
-                >
+                <button onClick={() => handleEdit(s)} style={{ ...btnGhost, flex: 1, fontSize: '12px' }}>
                   Edit
                 </button>
-                <button
-                  onClick={() => handleDelete(s.id)}
-                  style={{ ...btnDanger, flex: 1, fontSize: '12px' }}
-                >
+                <button onClick={() => handleDelete(s.id)} style={{ ...btnDanger, flex: 1, fontSize: '12px' }}>
                   Hapus
                 </button>
               </div>
@@ -264,63 +262,10 @@ export default function Schedules() {
   );
 }
 
-const pageStyle: React.CSSProperties = {
-  padding: '20px 16px',
-  maxWidth: '860px',
-  margin: '0 auto',
-};
-
-const card: React.CSSProperties = {
-  background: 'var(--bg-card)',
-  border: '1px solid var(--border)',
-  borderRadius: '12px',
-  padding: '16px',
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: '12px',
-  color: 'var(--text-muted)',
-  display: 'block',
-  marginBottom: '6px',
-  fontWeight: 600,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  background: 'var(--bg)',
-  border: '1px solid var(--border)',
-  borderRadius: '8px',
-  padding: '10px 14px',
-  color: 'var(--text)',
-  fontSize: '14px',
-  outline: 'none',
-};
-
-const btnGreen: React.CSSProperties = {
-  background: 'var(--green)',
-  color: '#fff',
-  fontWeight: 700,
-  border: 'none',
-  borderRadius: '8px',
-  padding: '10px 16px',
-  fontSize: '13px',
-  cursor: 'pointer',
-};
-
-const btnGhost: React.CSSProperties = {
-  background: 'transparent',
-  border: '1px solid var(--border)',
-  color: 'var(--text-muted)',
-  borderRadius: '8px',
-  padding: '8px 12px',
-  cursor: 'pointer',
-};
-
-const btnDanger: React.CSSProperties = {
-  background: 'transparent',
-  border: '1px solid var(--red)',
-  color: 'var(--red)',
-  borderRadius: '8px',
-  padding: '8px 12px',
-  cursor: 'pointer',
-};
+const pageStyle: React.CSSProperties = { padding: '20px 16px', maxWidth: '860px', margin: '0 auto' };
+const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' };
+const labelStyle: React.CSSProperties = { fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 };
+const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 14px', color: 'var(--text)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' as const };
+const btnGreen: React.CSSProperties = { background: 'var(--green)', color: '#fff', fontWeight: 700, border: 'none', borderRadius: '8px', padding: '10px 16px', fontSize: '13px', cursor: 'pointer' };
+const btnGhost: React.CSSProperties = { background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)', borderRadius: '8px', padding: '8px 12px', cursor: 'pointer' };
+const btnDanger: React.CSSProperties = { background: 'transparent', border: '1px solid var(--red)', color: 'var(--red)', borderRadius: '8px', padding: '8px 12px', cursor: 'pointer' };

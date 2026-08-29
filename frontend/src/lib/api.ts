@@ -44,6 +44,7 @@ export const createSchedule = (data: {
   days: string[];
   startTime: string;
   durationMinutes: number;
+  durationSeconds?: number;
 }) => api.post('/schedules', data);
 
 export const updateSchedule = (
@@ -53,6 +54,7 @@ export const updateSchedule = (
     days: string[];
     startTime: string;
     durationMinutes: number;
+    durationSeconds: number;
     isActive: boolean;
   }
 ) => api.put(`/schedules/${id}`, data);

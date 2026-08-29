@@ -5,6 +5,7 @@ interface Status {
   isOn: boolean;
   mode: 'auto' | 'manual';
   pumpOffAt: string | null;
+  scheduleEndAt: string | null;
   deviceOnline: boolean;
   lastHeartbeat: string | null;
 }
@@ -29,11 +30,10 @@ export default function Dashboard() {
   const [loadingInsight, setLoadingInsight] = useState(false);
   const [loading, setLoading] = useState(false);
   const [lastSuccessfulFetch, setLastSuccessfulFetch] = useState(Date.now());
-
-  // Pakai string supaya bisa dihapus dan diketik bebas
   const [inputMinutes, setInputMinutes] = useState<string>('');
   const [inputSeconds, setInputSeconds] = useState<string>('');
   const [countdown, setCountdown] = useState<string | null>(null);
+  const [countdownLabel, setCountdownLabel] = useState<string>('Mati otomatis');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
@@ -99,13 +99,28 @@ export default function Dashboard() {
 
   useEffect(() => { fetchInsight(); }, [fetchInsight]);
 
+  // Countdown -- handle manual timer (pumpOffAt) dan auto schedule (scheduleEndAt)
   useEffect(() => {
-    if (!status?.pumpOffAt || !status?.isOn) { setCountdown(null); return; }
+    if (!status?.isOn) { setCountdown(null); return; }
+
+    const endAt = status.mode === 'manual'
+      ? status.pumpOffAt
+      : status.scheduleEndAt;
+
+    if (!endAt) { setCountdown(null); return; }
+
+    setCountdownLabel(status.mode === 'manual' ? 'Mati otomatis' : 'Jadwal selesai');
+
     const update = () => {
-      const remaining = new Date(status.pumpOffAt!.replace(' ', 'T') + 'Z').getTime() - Date.now();
+      // pumpOffAt dari Directus butuh normalisasi timezone, scheduleEndAt sudah ISO proper
+      const endMs = status.mode === 'manual'
+        ? new Date(endAt.replace(' ', 'T') + (endAt.includes('Z') ? '' : 'Z')).getTime()
+        : new Date(endAt).getTime();
+
+      const remaining = endMs - Date.now();
       if (remaining <= 0) {
         setCountdown('00:00');
-        fetchStatus(); // langsung fetch status baru saat timer habis
+        fetchStatus();
         return;
       }
       const totalSeconds = Math.ceil(remaining / 1000);
@@ -113,10 +128,11 @@ export default function Dashboard() {
       const s = totalSeconds % 60;
       setCountdown(`${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
     };
+
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [status?.pumpOffAt, status?.isOn, fetchStatus]);
+  }, [status?.pumpOffAt, status?.scheduleEndAt, status?.isOn, status?.mode, fetchStatus]);
 
   const handleToggle = async () => {
     if (!status) return;
@@ -183,7 +199,7 @@ export default function Dashboard() {
       </p>
       {countdown && !connectionLost && (
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>
-          Mati otomatis: <span style={{ color: 'var(--green)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{countdown}</span>
+          {countdownLabel}: <span style={{ color: 'var(--green)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{countdown}</span>
         </p>
       )}
     </div>
@@ -254,11 +270,8 @@ export default function Dashboard() {
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <input
-              type="number"
-              min={0}
-              max={60}
-              value={inputMinutes}
-              placeholder="0"
+              type="number" min={0} max={60}
+              value={inputMinutes} placeholder="0"
               onChange={e => {
                 const val = e.target.value.replace(/[^0-9]/g, '');
                 if (val === '' || parseInt(val) <= 60) setInputMinutes(val);
@@ -267,11 +280,8 @@ export default function Dashboard() {
             />
             <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>menit</span>
             <input
-              type="number"
-              min={0}
-              max={59}
-              value={inputSeconds}
-              placeholder="0"
+              type="number" min={0} max={59}
+              value={inputSeconds} placeholder="0"
               onChange={e => {
                 const val = e.target.value.replace(/[^0-9]/g, '');
                 if (val === '' || parseInt(val) <= 59) setInputSeconds(val);
@@ -387,18 +397,6 @@ export default function Dashboard() {
 }
 
 const pageStyle: React.CSSProperties = { padding: '28px 24px', maxWidth: '1000px', margin: '0 auto' };
-
-const card: React.CSSProperties = {
-  background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px',
-};
-
-const cardLabel: React.CSSProperties = {
-  fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)',
-  textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '60px', padding: '8px', borderRadius: '6px',
-  border: '1px solid var(--border)', background: 'var(--bg)',
-  color: 'var(--text)', fontSize: '14px', textAlign: 'center',
-};
+const card: React.CSSProperties = { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' };
+const cardLabel: React.CSSProperties = { fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 };
+const inputStyle: React.CSSProperties = { width: '60px', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '14px', textAlign: 'center' };
