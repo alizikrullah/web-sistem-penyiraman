@@ -171,8 +171,11 @@ export default function Dashboard() {
   const connectionLost = Date.now() - lastSuccessfulFetch > CONNECTION_TIMEOUT;
   const effectiveIsOn = connectionLost ? false : status.isOn;
 
-  const formatSensorTime = (timestamp: string) =>
-    new Date(timestamp.replace(' ', 'T') + 'Z').toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' });
+  const formatSensorTime = (timestamp: string) => {
+    const normalized = timestamp.replace(' ', 'T');
+    const withTz = normalized.endsWith('Z') || normalized.includes('+') ? normalized : normalized + 'Z';
+    return new Date(withTz).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' });
+  };
 
   const formatInsightTime = (ts: string) =>
     new Date(ts).toLocaleString('id-ID', {
