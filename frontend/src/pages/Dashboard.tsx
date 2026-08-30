@@ -388,31 +388,34 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {StatusPompaCard}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            {SuhuCard}
-            {KelembapanCard}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {ESPPompaCard}
             {ESPDHTCard}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {SuhuCard}
+            {KelembapanCard}
           </div>
           {KontrolCard}
           {InsightCard}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+          {/* Baris 1: Status Pompa | ESP Pompa | ESP DHT22 -- 3 kolom sama besar */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
             {StatusPompaCard}
             {ESPPompaCard}
-            {SuhuCard}
-            {KelembapanCard}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
             {ESPDHTCard}
+          </div>
+          {/* Baris 2: Suhu+Kelembapan stacked | Kontrol Manual -- 2 kolom sama besar */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {SuhuCard}
+              {KelembapanCard}
+            </div>
             {KontrolCard}
           </div>
-          <div>
-            {InsightCard}
-          </div>
+          {/* Baris 3: Insight full width */}
+          {InsightCard}
         </div>
       )}
     </div>
