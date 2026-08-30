@@ -32,7 +32,6 @@ router.get('/status', requireAuth, async (_req: Request, res: Response): Promise
   try {
     let state = await getState();
 
-    // Auto-expire timer manual kalau sudah lewat waktunya
     if (state.pump_off_at && state.is_on) {
       const pumpOffAtMs = new Date(state.pump_off_at).getTime();
       if (Date.now() >= pumpOffAtMs) {
@@ -42,7 +41,6 @@ router.get('/status', requireAuth, async (_req: Request, res: Response): Promise
       }
     }
 
-    // Hitung kapan jadwal auto selesai
     let scheduleEndAt: string | null = null;
     if (state.is_on && state.mode === 'auto') {
       try {
@@ -68,12 +66,16 @@ router.get('/status', requireAuth, async (_req: Request, res: Response): Promise
           }
         }
       } catch {
-        // silent fail, countdown tidak tampil tapi sistem tetap jalan
+        // silent fail
       }
     }
 
     const isDeviceOnline = state.last_heartbeat
       ? (Date.now() - new Date(state.last_heartbeat).getTime()) < 2 * 60 * 1000
+      : false;
+
+    const isSensorOnline = state.sensor_last_heartbeat
+      ? (Date.now() - new Date(state.sensor_last_heartbeat).getTime()) < 2 * 60 * 1000
       : false;
 
     res.json({
@@ -84,6 +86,8 @@ router.get('/status', requireAuth, async (_req: Request, res: Response): Promise
       lastUpdated: state.date_updated,
       lastHeartbeat: state.last_heartbeat,
       deviceOnline: isDeviceOnline,
+      sensorLastHeartbeat: state.sensor_last_heartbeat ?? null,
+      sensorOnline: isSensorOnline,
     });
   } catch {
     res.status(500).json({ error: 'Gagal ambil status' });
