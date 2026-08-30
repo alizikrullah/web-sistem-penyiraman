@@ -8,6 +8,8 @@ interface Status {
   scheduleEndAt: string | null;
   deviceOnline: boolean;
   lastHeartbeat: string | null;
+  sensorOnline: boolean;
+  sensorLastHeartbeat: string | null;
 }
 
 interface SensorData {
@@ -99,20 +101,15 @@ export default function Dashboard() {
 
   useEffect(() => { fetchInsight(); }, [fetchInsight]);
 
-  // Countdown -- handle manual timer (pumpOffAt) dan auto schedule (scheduleEndAt)
   useEffect(() => {
     if (!status?.isOn) { setCountdown(null); return; }
 
-    const endAt = status.mode === 'manual'
-      ? status.pumpOffAt
-      : status.scheduleEndAt;
-
+    const endAt = status.mode === 'manual' ? status.pumpOffAt : status.scheduleEndAt;
     if (!endAt) { setCountdown(null); return; }
 
     setCountdownLabel(status.mode === 'manual' ? 'Mati otomatis' : 'Jadwal selesai');
 
     const update = () => {
-      // pumpOffAt dari Directus butuh normalisasi timezone, scheduleEndAt sudah ISO proper
       const endMs = status.mode === 'manual'
         ? new Date(endAt.replace(' ', 'T') + (endAt.includes('Z') ? '' : 'Z')).getTime()
         : new Date(endAt).getTime();
@@ -171,7 +168,7 @@ export default function Dashboard() {
   const connectionLost = Date.now() - lastSuccessfulFetch > CONNECTION_TIMEOUT;
   const effectiveIsOn = connectionLost ? false : status.isOn;
 
-  const formatSensorTime = (timestamp: string) => {
+  const formatTime = (timestamp: string) => {
     const normalized = timestamp.replace(' ', 'T');
     const withTz = normalized.endsWith('Z') || normalized.includes('+') ? normalized : normalized + 'Z';
     return new Date(withTz).toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' });
@@ -208,9 +205,9 @@ export default function Dashboard() {
     </div>
   );
 
-  const StatusESP32Card = (
+  const ESPPompaCard = (
     <div style={card}>
-      <p style={cardLabel}>Status ESP32</p>
+      <p style={cardLabel}>ESP Pompa</p>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '16px 0' }}>
         <div style={{
           width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0,
@@ -222,9 +219,26 @@ export default function Dashboard() {
       </div>
       <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
         Heartbeat terakhir:{' '}
-        {status.lastHeartbeat
-          ? new Date(status.lastHeartbeat.replace(' ', 'T') + 'Z').toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta' })
-          : '-'}
+        {status.lastHeartbeat ? formatTime(status.lastHeartbeat) : '-'}
+      </p>
+    </div>
+  );
+
+  const ESPDHTCard = (
+    <div style={card}>
+      <p style={cardLabel}>ESP DHT22</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '16px 0' }}>
+        <div style={{
+          width: '10px', height: '10px', borderRadius: '50%', flexShrink: 0,
+          background: status.sensorOnline ? 'var(--green)' : 'var(--red)',
+        }} />
+        <span style={{ fontSize: '20px', fontWeight: 600 }}>
+          {status.sensorOnline ? 'Online' : 'Offline'}
+        </span>
+      </div>
+      <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+        Heartbeat terakhir:{' '}
+        {status.sensorLastHeartbeat ? formatTime(status.sensorLastHeartbeat) : '-'}
       </p>
     </div>
   );
@@ -241,7 +255,7 @@ export default function Dashboard() {
         )}
       </div>
       <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-        {sensorData?.timestamp ? `Update: ${formatSensorTime(sensorData.timestamp)}` : 'Belum ada data'}
+        {sensorData?.timestamp ? `Update: ${formatTime(sensorData.timestamp)}` : 'Belum ada data'}
       </p>
     </div>
   );
@@ -258,7 +272,7 @@ export default function Dashboard() {
         )}
       </div>
       <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-        {sensorData?.timestamp ? `Update: ${formatSensorTime(sensorData.timestamp)}` : 'Belum ada data'}
+        {sensorData?.timestamp ? `Update: ${formatTime(sensorData.timestamp)}` : 'Belum ada data'}
       </p>
     </div>
   );
@@ -377,7 +391,10 @@ export default function Dashboard() {
             {SuhuCard}
             {KelembapanCard}
           </div>
-          {StatusESP32Card}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {ESPPompaCard}
+            {ESPDHTCard}
+          </div>
           {KontrolCard}
           {InsightCard}
         </div>
@@ -385,12 +402,15 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
             {StatusPompaCard}
-            {StatusESP32Card}
+            {ESPPompaCard}
             {SuhuCard}
             {KelembapanCard}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+            {ESPDHTCard}
             {KontrolCard}
+          </div>
+          <div>
             {InsightCard}
           </div>
         </div>
